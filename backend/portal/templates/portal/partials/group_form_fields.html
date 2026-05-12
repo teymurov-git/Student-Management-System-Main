@@ -1,0 +1,18 @@
+{% if group_form.non_field_errors %}<ul class="errorlist">{{ group_form.non_field_errors }}</ul>{% endif %}
+<div class="group-form__grid">
+  {% for field in group_form %}
+  <div class="group-form__field{% if field.name == 'lesson_weekdays' %} group-form__field--weekdays{% endif %}">
+    {% if field.name == "lesson_weekdays" %}
+    <div class="form-label">{{ field.label }}</div>
+    {% else %}
+    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {% endif %}
+    {{ field.errors }}
+    {{ field }}
+    {% if field.help_text %}<p class="form-field__help">{{ field.help_text }}</p>{% endif %}
+  </div>
+  {% endfor %}
+  <div class="group-form__actions">
+    <button type="submit" class="btn {{ submit_button_class|default:'btn-secondary' }}">{{ submit_label|default:"Saxla" }}</button>
+  </div>
+</div>

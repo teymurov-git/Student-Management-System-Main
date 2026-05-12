@@ -11,6 +11,9 @@ from students.models import Student, StudentGroup
 def _wire_widgets(form: forms.BaseForm) -> None:
     for field in form.fields.values():
         c = field.widget.attrs.get("class", "").strip()
+        if isinstance(field.widget, forms.CheckboxSelectMultiple):
+            field.widget.attrs["class"] = f"{c} checkbox-chip-list".strip()
+            continue
         field.widget.attrs["class"] = f"{c} field-control".strip()
 
 

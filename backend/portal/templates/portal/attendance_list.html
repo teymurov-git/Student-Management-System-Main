@@ -4,7 +4,7 @@
 <div class="page-header">
   <div>
     <h1>Davamiyyət</h1>
-    <p class="lead">Qrup seçin, həmin qrupun dərs günləri ay üzrə sütunlarda görünsün.</p>
+    <p class="lead">Qrup seçin və hüceyrədəki ✓, ✕, ! düymələrinə klikləyərək davamiyyəti birbaşa cədvəldə qeyd edin.</p>
   </div>
   <div class="page-actions">
     <a class="btn btn-primary" href="{% url 'portal:attendance_add' %}?student_group={{ selected_student_group }}&month={{ filter_month }}">+ Qrup üzrə qeyd</a>
@@ -45,14 +45,17 @@
 </div>
 {% endif %}
 
-<div class="card" style="padding:0;overflow:auto;">
+<form method="post" action="{% url 'portal:attendance_quick_mark' %}" class="card attendance-grid-card">
+  {% csrf_token %}
+  <input type="hidden" name="student_group" value="{{ selected_group.pk }}">
+  <input type="hidden" name="month" value="{{ filter_month }}">
   <table class="data" style="min-width:860px;">
     <thead>
       <tr>
         <th style="position:sticky;left:0;z-index:2;background:var(--surface);min-width:13rem;">Tələbə</th>
         {% for lesson_date in lesson_dates %}
         <th style="text-align:center;min-width:4.25rem;">
-          <a href="{% url 'portal:attendance_add' %}?student_group={{ selected_group.pk }}&date={{ lesson_date|date:'Y-m-d' }}&month={{ filter_month }}">{{ lesson_date|date:"d.m" }}</a>
+          <span>{{ lesson_date|date:"d.m" }}</span>
           <div style="font-size:0.72rem;color:var(--text-secondary);font-weight:500;">{{ lesson_date|date:"D" }}</div>
         </th>
         {% endfor %}
@@ -63,8 +66,22 @@
       <tr>
         <td style="position:sticky;left:0;background:var(--surface);z-index:1;"><strong>{{ row.student.full_name }}</strong></td>
         {% for cell in row.cells %}
-        <td style="text-align:center;">
-          <a class="badge {{ cell.css }}" href="{{ cell.mark_url }}" title="{{ cell.label }} · {{ cell.date|date:'Y-m-d' }}" style="min-width:2.25rem;justify-content:center;text-decoration:none;">{{ cell.icon }}</a>
+        <td class="attendance-cell">
+          <div class="attendance-cell__current">
+            <span class="badge {{ cell.css }}" title="{{ cell.label }} · {{ cell.date|date:'Y-m-d' }}">{{ cell.icon }}</span>
+          </div>
+          <div class="attendance-mark-actions" aria-label="{{ row.student.full_name }} · {{ cell.date|date:'Y-m-d' }}">
+            {% for option in status_options %}
+            <button
+              type="submit"
+              name="mark"
+              value="{{ row.student.pk }}|{{ cell.date|date:'Y-m-d' }}|{{ option.value }}"
+              class="attendance-mark-btn {{ option.css }}{% if cell.status == option.value %} is-selected{% endif %}"
+              title="{{ option.label }}"
+              aria-label="{{ row.student.full_name }} · {{ cell.date|date:'Y-m-d' }} · {{ option.label }}"
+            >{{ option.icon }}</button>
+            {% endfor %}
+          </div>
         </td>
         {% endfor %}
       </tr>
@@ -73,14 +90,14 @@
       {% endfor %}
     </tbody>
   </table>
-</div>
+</form>
 
 <div class="card card-tight">
   <div class="toolbar" style="gap:0.5rem;">
     <span class="badge badge-ok">✓ İştirak etdi</span>
     <span class="badge badge-bad">✕ İştirak etmədi</span>
     <span class="badge badge-warn">! Gecikdi</span>
-    <span class="badge badge-muted">--- Qeyd yoxdur</span>
+    <span class="badge badge-muted">--- Məlumat yoxdur</span>
   </div>
 </div>
 {% else %}

@@ -41,6 +41,11 @@ urlpatterns = [
     path("students/<int:pk>/edit/", views.StudentUpdateView.as_view(), name="student_edit"),
     path("students/<int:pk>/archive/", views.StudentArchiveView.as_view(), name="student_archive"),
     path("davamiyyet/", views.AttendanceListView.as_view(), name="attendance_list"),
+    path(
+        "davamiyyet/quick-mark/",
+        views.AttendanceQuickMarkView.as_view(),
+        name="attendance_quick_mark",
+    ),
     path("davamiyyet/add/", views.AttendanceMarkView.as_view(), name="attendance_add"),
     path("odenisler/", views.PaymentYearGridView.as_view(), name="payment_grid"),
     path("odenisler/set-status/", views.PaymentSetStatusView.as_view(), name="payment_set_status"),

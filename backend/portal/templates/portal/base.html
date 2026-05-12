@@ -31,6 +31,7 @@
     })();
   </script>
   <title>{% block title %}İdarə paneli{% endblock %} — Tələbə İdarəetmə Sistemi</title>
+  <link rel="icon" type="image/png" href="{% static 'portal/brand/logo.png' %}">
   <link rel="stylesheet" href="{% static 'portal/style.css' %}">
 </head>
 <body>
@@ -42,7 +43,7 @@
     <div class="sidebar-brand">
       <div class="sidebar-brand-top">
         <div class="sidebar-brand-ident">
-          <div class="logo-mark logo-mark--sidebar" aria-hidden="true">YT</div>
+          <img class="logo-img logo-img--sidebar" src="{% static 'portal/brand/logo.png' %}" alt="" aria-hidden="true">
           <div class="sidebar-brand-text">
             <div class="logo-title">Yusif Teymurlu</div>
             <!-- <div class="logo-sub">Təhsil paneli</div> -->

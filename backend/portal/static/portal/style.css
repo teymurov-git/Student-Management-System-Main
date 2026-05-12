@@ -162,9 +162,9 @@ html[data-theme="light"] .theme-toggle__icon-moon {
   width: 44px;
   height: 44px;
   max-width: 100%;
-  object-fit: contain;
+  object-fit: cover;
   aspect-ratio: 1;
-  padding: 3px;
+  padding: 0;
   border-radius: 12px;
   border: 1px solid var(--border-strong);
   background: rgba(255, 255, 255, 0.04);
@@ -745,6 +745,57 @@ table.data tbody tr:hover {
   color: var(--bad);
 }
 
+/* —— Attendance grid —— */
+.attendance-grid-card {
+  padding: 0;
+  overflow: auto;
+}
+.attendance-cell {
+  min-width: 5.75rem;
+  text-align: center;
+}
+.attendance-cell__current {
+  display: flex;
+  justify-content: center;
+  min-height: 1.35rem;
+  margin-bottom: 0.28rem;
+}
+.attendance-cell__current .badge {
+  min-width: 2.25rem;
+  justify-content: center;
+}
+.attendance-mark-actions {
+  display: inline-flex;
+  gap: 0.22rem;
+  align-items: center;
+  justify-content: center;
+}
+.attendance-mark-btn {
+  width: 1.55rem;
+  height: 1.55rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.62;
+  transition: opacity 0.15s, transform 0.1s, border-color 0.15s, box-shadow 0.15s;
+}
+.attendance-mark-btn:hover,
+.attendance-mark-btn:focus-visible {
+  opacity: 1;
+  transform: translateY(-1px);
+  outline: none;
+}
+.attendance-mark-btn.is-selected {
+  opacity: 1;
+  border-color: currentColor;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08);
+}
+
 /* —— Form controls —— */
 label,
 .form-label {
@@ -1315,10 +1366,115 @@ html[data-theme="light"] .theme-toggle:hover {
   box-shadow: 0 3px 12px rgba(37, 99, 235, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
-/* Qrup çipləri + illik ödəniş şəbəkəsi */
+/* Qrup formaları + çiplər */
 .group-quick-add .toolbar {
   margin: 0;
 }
+.group-form {
+  margin: 0;
+}
+.group-form--page {
+  max-width: 46rem;
+}
+.group-form__grid {
+  display: grid;
+  grid-template-columns: minmax(13rem, 1.2fr) minmax(10rem, 0.8fr);
+  gap: 0.75rem 1rem;
+  align-items: start;
+}
+.group-form__field {
+  min-width: 0;
+}
+.group-form__field label,
+.group-form__field .form-label {
+  margin-top: 0;
+}
+.group-form__field .field-control {
+  max-width: none;
+}
+.group-form__field--weekdays,
+.group-form__actions {
+  grid-column: 1 / -1;
+}
+.group-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.2rem;
+}
+.checkbox-chip-list,
+.checkbox-chip-list.field-control {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  list-style: none;
+}
+.checkbox-chip-list > div,
+.checkbox-chip-list > li {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.checkbox-chip-list label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.15rem;
+  margin: 0;
+  padding: 0.42rem 0.68rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.25;
+  text-transform: none;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.checkbox-chip-list label:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+}
+.checkbox-chip-list label:has(input:checked) {
+  border-color: rgba(91, 159, 212, 0.48);
+  background: var(--accent-glow);
+  color: var(--text);
+}
+.checkbox-chip-list label:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.checkbox-chip-list input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  flex: 0 0 auto;
+  accent-color: var(--accent);
+}
+@media (max-width: 640px) {
+  .group-form__grid {
+    grid-template-columns: 1fr;
+  }
+  .group-form__actions {
+    justify-content: stretch;
+  }
+  .group-form__actions .btn {
+    width: 100%;
+  }
+  .checkbox-chip-list {
+    gap: 0.45rem;
+  }
+}
+
+/* Qrup çipləri + illik ödəniş şəbəkəsi */
 .group-chips {
   display: flex;
   flex-wrap: wrap;

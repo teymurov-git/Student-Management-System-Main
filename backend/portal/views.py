@@ -130,6 +130,15 @@ ATTENDANCE_STATUS_META = {
         "label": "Gecikdi",
     },
 }
+ATTENDANCE_STATUS_OPTIONS = [
+    {
+        "value": value,
+        "label": ATTENDANCE_STATUS_META[value]["label"],
+        "icon": ATTENDANCE_STATUS_META[value]["icon"],
+        "css": ATTENDANCE_STATUS_META[value]["css"],
+    }
+    for value, _label in ATTENDANCE_MARK_STATUSES
+]
 
 
 def _safe_next_url(request):
@@ -175,6 +184,12 @@ def _attendance_redirect(group_id, target_date, month_value):
     return redirect(
         reverse("portal:attendance_add")
         + f"?student_group={group_id}&date={target_date.isoformat()}&month={month_value}"
+    )
+
+
+def _attendance_list_redirect(group_id, month_value):
+    return redirect(
+        reverse("portal:attendance_list") + f"?student_group={group_id}&month={month_value}"
     )
 
 
@@ -576,11 +591,10 @@ class AttendanceListView(LoginRequiredMixin, TemplateView):
                             {
                                 "date": lesson_date,
                                 "record": record,
+                                "status": record.status,
                                 "icon": meta["icon"],
                                 "css": meta["css"],
                                 "label": meta["label"],
-                                "mark_url": reverse("portal:attendance_add")
-                                + f"?student_group={selected_group.pk}&date={lesson_date.isoformat()}&month={selected_month}",
                             }
                         )
                     else:
@@ -588,11 +602,10 @@ class AttendanceListView(LoginRequiredMixin, TemplateView):
                             {
                                 "date": lesson_date,
                                 "record": None,
+                                "status": "",
                                 "icon": "---",
                                 "css": "badge-muted",
-                                "label": "Qeyd yoxdur",
-                                "mark_url": reverse("portal:attendance_add")
-                                + f"?student_group={selected_group.pk}&date={lesson_date.isoformat()}&month={selected_month}",
+                                "label": "Məlumat yoxdur",
                             }
                         )
                 rows.append({"student": student, "cells": cells})
@@ -620,9 +633,71 @@ class AttendanceListView(LoginRequiredMixin, TemplateView):
                 if marked_count
                 else 0.0,
                 "status_choices": ATTENDANCE_MARK_STATUSES,
+                "status_options": ATTENDANCE_STATUS_OPTIONS,
             }
         )
         return ctx
+
+
+class AttendanceQuickMarkView(LoginRequiredMixin, View):
+    def post(self, request):
+        group_id = (request.POST.get("student_group") or "").strip()
+        raw_mark = (request.POST.get("mark") or "").strip()
+        fallback_date = date.today()
+        month_year, month_num = _parse_month(request.POST.get("month"), fallback_date)
+        selected_month = _month_value(month_year, month_num)
+
+        if not group_id.isdigit():
+            messages.error(request, "Davamiyyət üçün qrup seçin.")
+            return redirect("portal:attendance_list")
+
+        group = get_object_or_404(StudentGroup, pk=int(group_id))
+
+        try:
+            student_id_raw, date_raw, status = raw_mark.split("|", 2)
+            student_id = int(student_id_raw)
+            target_date = date.fromisoformat(date_raw)
+        except (TypeError, ValueError):
+            messages.error(request, "Yanlış davamiyyət sorğusu.")
+            return _attendance_list_redirect(group.pk, selected_month)
+
+        month_year, month_num = _parse_month(request.POST.get("month"), target_date)
+        selected_month = _month_value(month_year, month_num)
+        allowed_statuses = {value for value, _label in ATTENDANCE_MARK_STATUSES}
+        if status not in allowed_statuses:
+            messages.error(request, "Yanlış davamiyyət statusu.")
+            return _attendance_list_redirect(group.pk, selected_month)
+
+        student = get_object_or_404(
+            Student,
+            pk=student_id,
+            student_group_id=group.pk,
+            is_archived=False,
+            status=Student.Status.ACTIVE,
+        )
+        record, created = AttendanceRecord.objects.update_or_create(
+            student=student,
+            date=target_date,
+            defaults={"status": status},
+        )
+        log_audit(
+            request.user,
+            "quick_mark",
+            "AttendanceRecord",
+            str(record.pk),
+            {
+                "student": student.pk,
+                "group": group.pk,
+                "date": target_date.isoformat(),
+                "status": status,
+                "created": created,
+            },
+        )
+        messages.success(
+            request,
+            f"{student.full_name} — {target_date.isoformat()}: {ATTENDANCE_STATUS_LABELS[status]}.",
+        )
+        return _attendance_list_redirect(group.pk, selected_month)
 
 
 class AttendanceMarkView(LoginRequiredMixin, TemplateView):

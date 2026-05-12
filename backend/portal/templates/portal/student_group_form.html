@@ -11,17 +11,8 @@
   </div>
 </div>
 
-<form method="post" class="card" style="max-width:42rem;">
+<form method="post" class="card group-form group-form--page">
   {% csrf_token %}
-  {% if form.non_field_errors %}<ul class="errorlist">{{ form.non_field_errors }}</ul>{% endif %}
-  {% for field in form %}
-  <div class="form-field">
-    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-    {{ field.errors }}
-    {{ field }}
-    {% if field.help_text %}<p class="form-field__help">{{ field.help_text }}</p>{% endif %}
-  </div>
-  {% endfor %}
-  <p style="margin-top:1.25rem;"><button type="submit" class="btn btn-primary">Saxla</button></p>
+  {% include "portal/partials/group_form_fields.html" with group_form=form submit_label="Saxla" submit_button_class="btn-primary" %}
 </form>
 {% endblock %}

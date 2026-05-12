@@ -15,17 +15,10 @@
 <div class="card group-quick-add">
   <div class="section-title" style="margin-bottom:0.6rem;text-transform:none;letter-spacing:0;font-size:0.92rem;color:var(--text);">Yeni qrup</div>
   <p style="margin:0 0 0.85rem;font-size:0.86rem;color:var(--text-secondary);">Qrup adı, aylıq məbləğ və dərs günlərini daxil edin — tələbə formasında bu qrup seçilə biləcək.</p>
-  <form method="post" action="{% url 'portal:student_group_add' %}" class="toolbar" style="flex-wrap:wrap;gap:0.75rem;">
+  <form method="post" action="{% url 'portal:student_group_add' %}" class="group-form group-form--quick">
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ request.get_full_path }}">
-    {% for field in group_form %}
-    <div class="field" style="min-width:10rem;">
-      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-      {{ field.errors }}
-      {{ field }}
-    </div>
-    {% endfor %}
-    <div class="field" style="align-self:flex-end;"><button type="submit" class="btn btn-secondary">Qrupu saxla</button></div>
+    {% include "portal/partials/group_form_fields.html" with group_form=group_form submit_label="Qrupu saxla" %}
   </form>
 </div>
 
