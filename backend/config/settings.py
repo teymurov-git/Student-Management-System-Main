@@ -31,6 +31,27 @@ VERCEL_URL = os.environ.get("VERCEL_URL", "").strip()
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-only-change-in-production")
 DEBUG = env_bool("DJANGO_DEBUG", default=not IS_VERCEL)
 
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": os.environ.get("DJANGO_LOG_LEVEL", "INFO"),
+    },
+    "loggers": {
+        "django.request": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+    },
+}
+
 ALLOWED_HOSTS = csv_env(
     "DJANGO_ALLOWED_HOSTS",
     "localhost,127.0.0.1,.vercel.app",
@@ -120,9 +141,17 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_STORAGE_BACKEND = os.environ.get(
+    "DJANGO_STATICFILES_STORAGE",
+    (
+        "whitenoise.storage.CompressedStaticFilesStorage"
+        if IS_VERCEL
+        else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    ),
+)
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+    "staticfiles": {"BACKEND": STATICFILES_STORAGE_BACKEND},
 }
 WHITENOISE_MANIFEST_STRICT = False
 
