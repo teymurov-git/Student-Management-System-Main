@@ -8,17 +8,34 @@
       Tədris ili: Sentyabr – Avqust (sütunlar bu sıradadır).
     </p>
     <p class="lead">
-      Ümumi {{ grid_year }} (yalnız «Ödənib»): <strong style="color:var(--text);">{{ year_total_paid|floatformat:2 }} ₼</strong>.
+      {{ payment_scope_label }} {{ grid_year }} (yalnız «Ödənib»): <strong style="color:var(--text);">{{ year_total_paid|floatformat:2 }} ₼</strong>.
       Köhnə sıra üçün <a href="{% url 'portal:payment_list' %}">cədvəl siyahısı</a>.
     </p>
   </div>
   <div class="page-actions toolbar pay-year-toolbar">
-    <a class="btn btn-ghost" href="?year={{ prev_year }}" aria-label="{{ prev_year }}">← {{ prev_year }}</a>
+    <a class="btn btn-ghost" href="?year={{ prev_year }}{{ group_query_suffix }}" aria-label="{{ prev_year }}">← {{ prev_year }}</a>
     <span class="badge badge-muted" style="align-self:center;">{{ grid_year }}</span>
-    <a class="btn btn-ghost" href="?year={{ next_year }}" aria-label="{{ next_year }}">{{ next_year }} →</a>
-    <a class="btn btn-secondary" href="{% url 'portal:payment_add' %}?year={{ grid_year }}">+ Ayrıca qeyd</a>
+    <a class="btn btn-ghost" href="?year={{ next_year }}{{ group_query_suffix }}" aria-label="{{ next_year }}">{{ next_year }} →</a>
+    <a class="btn btn-secondary" href="{% url 'portal:payment_add' %}?year={{ grid_year }}{{ group_query_suffix }}">+ Ayrıca qeyd</a>
   </div>
 </div>
+
+<form method="get" class="card toolbar pay-grid-filter">
+  <input type="hidden" name="year" value="{{ grid_year }}">
+  <div class="field field-grow">
+    <label for="id_payment_group">Qrup</label>
+    <select class="field-control" id="id_payment_group" name="student_group" onchange="this.form.submit()">
+      <option value="" {% if not selected_student_group %}selected{% endif %}>Ümumi</option>
+      {% for group in student_groups %}
+      <option value="{{ group.pk }}" {% if selected_student_group == group.pk|stringformat:"s" %}selected{% endif %}>{{ group.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field" style="align-self:flex-end;">
+    <button type="submit" class="btn btn-primary">Tətbiq et</button>
+  </div>
+  <span class="text-caption pay-grid-filter__summary">{{ student_count }} tələbə göstərilir.</span>
+</form>
 
 <div class="card pay-grid-legend">
   <span style="margin-right:0.75rem;font-weight:600;">Xülasə:</span>
@@ -51,6 +68,7 @@
               <input type="hidden" name="student_id" value="{{ row.student.pk }}">
               <input type="hidden" name="year" value="{{ grid_year }}">
               <input type="hidden" name="month" value="{{ cell.month }}">
+              {% if selected_student_group %}<input type="hidden" name="student_group" value="{{ selected_student_group }}">{% endif %}
               <div class="pay-cell-top">
                 {% if cell.payment %}
                   {% if cell.payment.status == 'paid' %}<span class="pill pill-ok" title="{{ cell.payment.amount }} ₼">{{ cell.payment.amount|floatformat:0 }}</span>
@@ -73,7 +91,7 @@
           {% endfor %}
         </tr>
         {% empty %}
-        <tr><td colspan="13"><div class="empty-state">Heç aktiv tələbə yoxdur.</div></td></tr>
+        <tr><td colspan="13"><div class="empty-state">{% if selected_group %}Bu qrupda aktiv tələbə yoxdur.{% else %}Heç aktiv tələbə yoxdur.{% endif %}</div></td></tr>
         {% endfor %}
       </tbody>
     </table>

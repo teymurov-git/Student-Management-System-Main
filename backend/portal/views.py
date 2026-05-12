@@ -883,12 +883,26 @@ class PaymentYearGridView(LoginRequiredMixin, TemplateView):
             year = int(raw_y)
         except (TypeError, ValueError):
             year = td.year
+        selected_student_group = ""
+        selected_group = None
+        raw_group = self.request.GET.get("student_group", "")
+        if raw_group and raw_group.isdigit():
+            selected_group = StudentGroup.objects.filter(pk=int(raw_group)).first()
+            if selected_group:
+                selected_student_group = str(selected_group.pk)
         students = Student.objects.filter(is_archived=False).select_related(
             "student_group"
         ).order_by("last_name", "first_name")
+        if selected_group:
+            students = students.filter(student_group=selected_group)
         pay_qs = MonthlyPayment.objects.filter(year=year).select_related(
-            "student"
+            "student", "student__student_group"
         )
+        if selected_group:
+            pay_qs = pay_qs.filter(student__student_group=selected_group)
+        paid_total = pay_qs.filter(status=MonthlyPayment.Status.PAID).aggregate(
+            t=Sum("amount")
+        )["t"] or Decimal("0")
         pmap = {}
         for p in pay_qs:
             pmap[(p.student_id, p.month)] = p
@@ -909,12 +923,22 @@ class PaymentYearGridView(LoginRequiredMixin, TemplateView):
                 "grid_year": year,
                 "prev_year": prev_y,
                 "next_year": next_y,
+                "selected_student_group": selected_student_group,
+                "selected_group": selected_group,
+                "student_groups": StudentGroup.objects.all(),
+                "payment_scope_label": selected_group.name if selected_group else "Ümumi",
+                "student_count": len(rows),
+                "group_query_suffix": (
+                    f"&student_group={selected_student_group}"
+                    if selected_student_group
+                    else ""
+                ),
                 "student_rows": rows,
                 "months_row": [
                     {"n": n, "label": AZ_MONTH_SHORT[n]}
                     for n in PAYMENT_GRID_MONTH_ORDER
                 ],
-                "year_total_paid": paid_amount_for_year(year),
+                "year_total_paid": paid_total,
             }
         )
         return ctx
@@ -922,13 +946,18 @@ class PaymentYearGridView(LoginRequiredMixin, TemplateView):
 
 class PaymentSetStatusView(LoginRequiredMixin, View):
     def post(self, request):
+        def grid_redirect_url(target_year):
+            group_id = request.POST.get("student_group", "").strip()
+            suffix = f"&student_group={group_id}" if group_id.isdigit() else ""
+            return reverse("portal:payment_grid") + f"?year={target_year}{suffix}"
+
         try:
             student_id = int(request.POST.get("student_id", ""))
             year = int(request.POST.get("year", ""))
             month = int(request.POST.get("month", ""))
         except (TypeError, ValueError):
             messages.error(request, "Yanlış sorğu.")
-            return redirect(reverse("portal:payment_grid") + f"?year={date.today().year}")
+            return redirect(grid_redirect_url(date.today().year))
 
         status = request.POST.get("status", "").strip().lower()
         if month < 1 or month > 12 or status not in {
@@ -937,7 +966,7 @@ class PaymentSetStatusView(LoginRequiredMixin, View):
             MonthlyPayment.Status.LATE,
         }:
             messages.error(request, "Yanlış ay və ya status.")
-            return redirect(reverse("portal:payment_grid") + f"?year={year}")
+            return redirect(grid_redirect_url(year))
 
         student = get_object_or_404(
             Student.objects.select_related("student_group"), pk=student_id
@@ -987,6 +1016,30 @@ class PaymentSetStatusView(LoginRequiredMixin, View):
         m_stu, y_stu = student_paid_totals(student.pk, year, month)
         m_all = paid_amount_for_month(year, month)
         y_all = paid_amount_for_year(year)
+        scope_label = "bütün tələbələr"
+        m_scope, y_scope = m_all, y_all
+        group_id = request.POST.get("student_group", "").strip()
+        if group_id.isdigit():
+            scope_group = StudentGroup.objects.filter(pk=int(group_id)).first()
+            if scope_group:
+                scope_label = f"«{scope_group.name}» qrupu"
+                m_scope = (
+                    MonthlyPayment.objects.filter(
+                        year=year,
+                        month=month,
+                        status=MonthlyPayment.Status.PAID,
+                        student__student_group=scope_group,
+                    ).aggregate(t=Sum("amount"))["t"]
+                    or Decimal("0")
+                )
+                y_scope = (
+                    MonthlyPayment.objects.filter(
+                        year=year,
+                        status=MonthlyPayment.Status.PAID,
+                        student__student_group=scope_group,
+                    ).aggregate(t=Sum("amount"))["t"]
+                    or Decimal("0")
+                )
         name_m = AZ_MONTHS[month] if 1 <= month <= 12 else str(month)
 
         messages.success(
@@ -994,9 +1047,10 @@ class PaymentSetStatusView(LoginRequiredMixin, View):
             f"{student.full_name} — «{name_m}» statusu yeniləndi. "
             f"Həmin ay üzrə (bu tələbə, ödənib): ₼ {m_stu:.2f}. "
             f"İl üzrə (bu tələbə, ödənib): ₼ {y_stu:.2f}. "
-            f"Cədvəldə bütün tələbələr — ay: ₼ {m_all:.2f}, il ({year}, ödənib): ₼ {y_all:.2f}.",
+            f"Cədvəldə {scope_label} — ay: ₼ {m_scope:.2f}, "
+            f"il ({year}, ödənib): ₼ {y_scope:.2f}.",
         )
-        return redirect(reverse("portal:payment_grid") + f"?year={year}")
+        return redirect(grid_redirect_url(year))
 
 
 class PaymentListView(LoginRequiredMixin, ListView):

@@ -1528,6 +1528,15 @@ html[data-theme="light"] .theme-toggle:hover {
 .pay-year-toolbar .btn-secondary {
   margin-left: auto;
 }
+.pay-grid-filter {
+  align-items: flex-end;
+}
+.pay-grid-filter__summary {
+  align-self: center;
+  color: var(--text-secondary);
+  margin-left: auto;
+  font-size: 0.85rem;
+}
 .pay-grid-wrap {
   padding: 0;
   overflow: hidden;
@@ -1537,15 +1546,17 @@ html[data-theme="light"] .theme-toggle:hover {
   -webkit-overflow-scrolling: touch;
 }
 .pay-grid {
-  min-width: 920px;
-  width: max-content;
-  margin-inline: auto;
+  min-width: 58rem;
+  width: 100%;
+  table-layout: fixed;
+  margin-inline: 0;
 }
 .pay-grid th.sticky-col,
 .pay-grid td.sticky-col {
   position: sticky;
   left: 0;
   z-index: 2;
+  width: clamp(9rem, 18%, 12rem);
   background: var(--surface);
   box-shadow: 3px 0 8px rgba(0, 0, 0, 0.12);
 }
@@ -1559,21 +1570,26 @@ html[data-theme="light"] .theme-toggle:hover {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-secondary);
-  max-width: 4.75rem;
+  padding-inline: 0.28rem;
+  white-space: normal;
+  word-break: keep-all;
 }
 .pay-grid-month span {
   display: block;
   line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 .pay-grid-name {
   white-space: nowrap;
   font-size: 0.88rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .pay-cell {
   padding: 0.35rem !important;
   vertical-align: top;
   border-left: 1px solid rgba(94, 120, 160, 0.12);
-  min-width: 4.4rem;
+  min-width: 0;
 }
 .pay-cell-actions {
   margin: 0;
@@ -1651,4 +1667,28 @@ html[data-theme="light"] .theme-toggle:hover {
 html[data-theme="light"] .pay-grid th.sticky-col,
 html[data-theme="light"] .pay-grid td.sticky-col {
   background: #fafbfc;
+}
+@media (max-width: 720px) {
+  .pay-grid {
+    min-width: 52rem;
+  }
+  .pay-grid th.sticky-col,
+  .pay-grid td.sticky-col {
+    width: 8.5rem;
+  }
+  .pay-grid-month {
+    font-size: 0.66rem;
+    letter-spacing: 0.02em;
+  }
+  .pay-cell {
+    padding-inline: 0.26rem !important;
+  }
+  .pill {
+    font-size: 0.68rem;
+    padding-inline: 0.32rem;
+  }
+  .pct {
+    font-size: 0.72rem;
+    padding-inline: 0.12rem;
+  }
 }
