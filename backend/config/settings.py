@@ -8,15 +8,35 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+IS_VERCEL = os.environ.get("VERCEL") == "1"
+
+
+def env_bool(name, default=False):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.lower() in {"1", "true", "yes", "on"}
+
+
+def csv_env(name, default=""):
+    return [
+        item.strip()
+        for item in os.environ.get(name, default).split(",")
+        if item.strip()
+    ]
+
+
+VERCEL_URL = os.environ.get("VERCEL_URL", "").strip()
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-only-change-in-production")
-DEBUG = os.environ.get("DJANGO_DEBUG", "true").lower() in ("1", "true", "yes")
+DEBUG = env_bool("DJANGO_DEBUG", default=not IS_VERCEL)
 
-ALLOWED_HOSTS = [
-    h.strip()
-    for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
-    if h.strip()
-]
+ALLOWED_HOSTS = csv_env(
+    "DJANGO_ALLOWED_HOSTS",
+    "localhost,127.0.0.1,.vercel.app",
+)
+if VERCEL_URL and VERCEL_URL not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(VERCEL_URL)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -71,6 +91,13 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 if os.environ.get("DATABASE_URL"):
     DATABASES = {"default": dj_database_url.config(conn_max_age=600)}
+elif IS_VERCEL:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": os.environ.get("SQLITE_PATH", "/tmp/db.sqlite3"),
+        }
+    }
 else:
     DATABASES = {
         "default": {
@@ -91,7 +118,7 @@ TIME_ZONE = "Asia/Baku"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
@@ -124,23 +151,31 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,
 }
 
-CORS_ALLOWED_ORIGINS = [
-    o.strip()
-    for o in os.environ.get(
-        "CORS_ALLOWED_ORIGINS",
-        "http://localhost:3000,http://127.0.0.1:3000",
-    ).split(",")
-    if o.strip()
-]
+CORS_ALLOWED_ORIGINS = csv_env(
+    "CORS_ALLOWED_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000",
+)
+if VERCEL_URL:
+    vercel_origin = f"https://{VERCEL_URL}"
+    if vercel_origin not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(vercel_origin)
 CORS_ALLOW_CREDENTIALS = True
 
-CSRF_TRUSTED_ORIGINS = [
-    o.strip()
-    for o in os.environ.get(
-        "CSRF_TRUSTED_ORIGINS",
-        "http://localhost:3000,http://127.0.0.1:3000",
-    ).split(",")
-    if o.strip()
-]
+CSRF_TRUSTED_ORIGINS = csv_env(
+    "CSRF_TRUSTED_ORIGINS",
+    ",".join(
+        [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:8000",
+            "http://127.0.0.1:8000",
+            "https://*.vercel.app",
+        ]
+    ),
+)
+if VERCEL_URL:
+    vercel_origin = f"https://{VERCEL_URL}"
+    if vercel_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(vercel_origin)
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

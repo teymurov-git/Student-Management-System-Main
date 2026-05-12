@@ -1,28 +1,34 @@
-# SMS layihəsinin yerləşdirilməsi (DEPLOY)
+# SMS layihəsinin Vercel deploy-u
 
-Əsas tətbiq **Django**: server tərəfində HTML, sessiya və API (`/api`). **Vercel** bu arxitekturada ənənəvi Django hostu deyil; istehsalat üçün **bir Python prosesi** ( məsələn Render, Railway və ya Fly.io ) istifadə edin.
+Bu repo Vercel-in pulsuz planında Django serverless function kimi işləmək üçün
+hazırlanıb. Əsas giriş nöqtəsi `api/index.py`, Vercel konfiqurasiyası isə
+`vercel.json` faylıdır.
 
-## İstehsalat: Django (Render / Railway / Fly)
+## Vercel addımları
 
-1. **Kök layihə qovluğu:** `backend/` ( və ya layihənin build addımı ilə eyni qovluğu seçin ).
-2. **Başlatma:** `backend/Procfile`-də nümunə: `web: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT`
-3. **Əsas environment dəyişənləri:**
+1. Vercel-də repo import edin.
+2. Framework kimi **Other** seçin.
+3. Root Directory boş qalsın, yəni layihənin kökü seçilsin.
+4. Build Command dəyişməyin: `python backend/manage.py collectstatic --noinput`.
+5. Environment Variables bölməsinə bunları əlavə edin:
+   - `DJANGO_SECRET_KEY` — uzun və gizli dəyər yazın.
    - `DJANGO_DEBUG=false`
-   - `DJANGO_SECRET_KEY`
-   - `DJANGO_ALLOWED_HOSTS` — domeniniz ( vergüllə ayrılmış )
-   - `DATABASE_URL` — PostgreSQL ( `django-environ` / `dj-database-url` kimi parse olunmalıdır )
-   - `CSRF_TRUSTED_ORIGINS` — tam HTTPS mənşə ( məs.: `https://app.example.com` )
-   - Statika üçün istehsalat axınına `collectstatic` əlavə edin
+   - `DJANGO_SUPERUSER_USERNAME=admin`
+   - `DJANGO_SUPERUSER_PASSWORD=...`
+   - `DJANGO_SUPERUSER_EMAIL=admin@example.com`
+6. Deploy bitəndən sonra `/login/` səhifəsinə həmin admin istifadəçi ilə girin.
 
-Əlavə detallar üçün repodakı `README.md`.
+`DJANGO_ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` və Vercel domenləri üçün əsas
+default dəyərlər artıq `settings.py` içində var. Custom domain qoşsanız,
+`DJANGO_ALLOWED_HOSTS` və `CSRF_TRUSTED_ORIGINS` dəyişənlərinə həmin domeni də
+əlavə edin.
 
-## Vercel ( istəyə bağlı ): statik landing
+## Database qeydi
 
-Panel Django-da qalır. Yalnız sadə statik qarşılama üçün:
+Xarici database əlavə olunmayıb. Vercel-də tətbiq SQLite faylını `/tmp/db.sqlite3`
+kimi yaradır və cold start zamanı migration-ları işlədir. Bu pulsuz/demo deploy
+üçün kifayətdir, amma Vercel serverless fayl sistemi daimi storage deyil:
+məlumatlar deploy, cold start və ya instance dəyişəndə sıfırlana bilər.
 
-1. `public/index.html` nümunə kimi verilib.
-2. Vercel-də Framework **Other**, **Output Directory**: `public` ( layihənin root parametrlərindən asılı olaraq uyğunlaşdırın ).
-
-Layihənin kökündəki `vercel.json` nümunədə `buildCommand`: `exit 0` ilə boş build saxlanılır; Vercel interfeysində bu addımı sıfırlamaq də olar.
-
-**Next.js tam SPA yenidən əlavə etməyin** — əsas UI Django portalındadır.
+Daimi məlumat saxlamaq lazım olsa, sonradan `DATABASE_URL` ilə PostgreSQL kimi
+xarici database qoşmaq mümkündür.

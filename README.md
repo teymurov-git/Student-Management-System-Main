@@ -1,111 +1,56 @@
-<<<<<<< HEAD
-# Student-Management-System-Main
-=======
-# Tələbə İdarəetmə Sistemi (SMS)
+# Telebe Idareetme Sistemi (SMS)
 
+Bu layihe Django esasli telebe idareetme panelidir. Interfeys server terefinde
+Django sablonlari ile isleyir, `/api/` endpoint-leri ise JWT ile inteqrasiyalar
+ucun saxlanilib.
 
-
-**İnterfeys:** Django — server tərəfində şablonlar (`portal`), sessiya ilə giriş, formlar, export. Kök URL: `/`.
-
-
-
-**REST API** (`/api/…`, JWT) istəyə bağlıdır — xarici skriptlər və inteqrasiya üçün saxlanılır.
-
-
-
-## Struktur (Python)
-
-
-
-| Qovluq | Təsvir |
-
-|--------|--------|
-
-| `backend/portal/` | Veb MVC: görünüşlər, şablonlar, formlar, export |
-
-| `backend/students/`, `payments/`, `attendance/`, `exams/`, `audit/` | Modellər + DRF API |
-
-
-
-## Lokal işə salma
-
-
+## Lokal ishe salma
 
 ```powershell
-
 cd backend
-
 python -m venv .venv
-
 .\.venv\Scripts\activate
-
 pip install -r requirements.txt
-
 python manage.py migrate
-
 python manage.py createsuperuser
-
 python manage.py runserver
-
 ```
 
+Brauzer: `http://127.0.0.1:8000/`
 
+Admin: `http://127.0.0.1:8000/admin/`
 
-Brauzer: **http://127.0.0.1:8000/** — `/login/` (eyni superuser).
+## Vercel deploy
 
+Layihe Vercel-in pulsuz planinda Django serverless function kimi deploy olunmaq
+ucun hazirlanib. Esas fayllar:
 
+- `api/index.py` - Vercel WSGI giris noqtesi.
+- `vercel.json` - Django function route ve `collectstatic` build addimi.
+- `requirements.txt` - Vercel-in root-dan Python paketlerini tapmasi ucun.
 
-Admin: **http://127.0.0.1:8000/admin/**
+Vercel-de repo import edin, Framework olaraq **Other** secin ve environment
+deyishenlerini elave edin:
 
+- `DJANGO_SECRET_KEY`
+- `DJANGO_DEBUG=false`
+- `DJANGO_SUPERUSER_USERNAME`
+- `DJANGO_SUPERUSER_PASSWORD`
+- `DJANGO_SUPERUSER_EMAIL`
 
+Etrafli addimlar `DEPLOY.md` faylindadir.
 
-İstehsalatda statika: `python manage.py collectstatic`.
+## Database qeydi
 
+Xarici database teleb olunmur. Lokal muhitde `backend/db.sqlite3`, Vercel-de ise
+`/tmp/db.sqlite3` SQLite fayli istifade olunur. Vercel serverless storage daimi
+olmadigi ucun deploy ve cold start zamani melumatlar sifirlana biler; bu qurulus
+pulsuz/demo istifade ucundur.
 
+## Faydali URL-ler
 
-## Deploy (Django tək proses)
-
-
-
-Ətraflı: [**DEPLOY.md**](./DEPLOY.md).
-
-
-
-Qısa göstərişlər:
-
-
-
-- **Host:** Render, Railway, Fly və s. — `backend/` üçün root; start: `gunicorn` (**`backend/Procfile`**).
-
-- **Environment:** `DJANGO_DEBUG=false`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DATABASE_URL`, `CSRF_TRUSTED_ORIGINS` (HTTPS domen).
-
-- **`CORS_ALLOWED_ORIGINS`** — yalnız `/api`-ə başqa bir domendə olan klient Qoşsanız lazımdır.
-
-
-
-### API (istəyə bağlı)
-
-
-
-| Endpoint | Təsvir |
-
-|----------|--------|
-
-| `POST /api/auth/token/` | JWT |
-
-| `GET /api/students/` … | DRF resursları |
-
-
-
-Portal export (giriş tələb olunur): `/export/students.xlsx`, `/export/students.pdf`, `/export/payments.xlsx`.
-
-
-
-## Texniki qeyd
-
-
-
-Ödəniş və sınaq tarixçəsi saxlanılır; portal əməliyyatları `audit` cədvəlinə yazılır.
-
-
->>>>>>> b8a8dc8 ('updated')
+- Portal: `/`
+- Login: `/login/`
+- Admin: `/admin/`
+- API token: `POST /api/auth/token/`
+- Export: `/export/students.xlsx`, `/export/students.pdf`, `/export/payments.xlsx`
