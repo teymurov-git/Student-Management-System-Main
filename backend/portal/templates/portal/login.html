@@ -1,0 +1,25 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block title %}Giriş{% endblock %}
+{% block content_guest %}
+<div class="login-page">
+  <div class="login-card">
+    <img src="{% static 'portal/brand/logo.png' %}" alt="Logo" class="logo-img login-card__logo" width="64" height="64" decoding="async" loading="lazy">
+    <h1>Giriş</h1>
+    <p class="sub">Django administrator hesabı ilə daxil olun.</p>
+    <form method="post" action="">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <ul class="messages" style="margin-bottom:1rem;">{% for e in form.non_field_errors %}<li class="error">{{ e }}</li>{% endfor %}</ul>
+      {% endif %}
+      <label for="id_username">İstifadəçi adı</label>
+      {{ form.username }}
+      {% if form.username.errors %}<ul class="errorlist">{{ form.username.errors }}</ul>{% endif %}
+      <label for="id_password">Şifrə</label>
+      {{ form.password }}
+      {% if form.password.errors %}<ul class="errorlist">{{ form.password.errors }}</ul>{% endif %}
+      <p style="margin-top:1.25rem;"><button type="submit" class="btn btn-primary" style="width:100%;">Daxil ol</button></p>
+    </form>
+  </div>
+</div>
+{% endblock %}

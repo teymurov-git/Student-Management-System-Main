@@ -1,0 +1,27 @@
+{% extends "portal/base.html" %}
+{% block title %}Audit{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Audit jurnalı</h1>
+    <p class="lead">Əsas CRUD əməliyyatları üzrə izlər.</p>
+  </div>
+</div>
+<div class="card" style="padding:0;overflow:hidden;">
+  <table class="data">
+    <thead><tr><th>Vaxt</th><th>İstifadəçi</th><th>Əməliyyat</th><th>Model</th><th>ID</th></tr></thead>
+    <tbody>
+      {% for log in logs %}
+      <tr>
+        <td style="white-space:nowrap;font-size:0.78rem;color:var(--text-secondary);font-family:var(--mono);">{{ log.created_at }}</td>
+        <td>{% if log.user %}{{ log.user.get_full_name|default:log.user.username }}{% else %}—{% endif %}</td>
+        <td><span class="badge badge-muted">{{ log.action }}</span></td>
+        <td>{{ log.model_name }}</td>
+        <td style="font-family:var(--mono);font-size:0.75rem;">{{ log.object_pk }}</td>
+      </tr>
+      {% empty %}<tr><td colspan="5"><div class="empty-state">Qeyd yoxdur.</div></td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% include "portal/partials/pagination.html" %}
+{% endblock %}

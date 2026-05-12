@@ -1,0 +1,22 @@
+{% extends "portal/base.html" %}
+{% block title %}Ödəniş{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{% if object %}Ödənişi yenilə{% else %}Yeni ödəniş qeydi{% endif %}</h1>
+    <p class="lead">Ay və il təkrarlanmamalıdır (eyni tələbə üçün).</p>
+  </div>
+  <div class="page-actions"><a class="btn btn-ghost" href="{% if object %}{% url 'portal:payment_grid' %}?year={{ object.year }}{% else %}{% url 'portal:payment_grid' %}{% endif %}">Ləğv</a></div>
+</div>
+<form method="post" class="card" style="max-width:36rem;">
+  {% csrf_token %}
+  {% for field in form %}
+  <div>
+    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {{ field.errors }}
+    {{ field }}
+  </div>
+  {% endfor %}
+  <p style="margin-top:1.25rem;"><button type="submit" class="btn btn-primary">Saxla</button></p>
+</form>
+{% endblock %}

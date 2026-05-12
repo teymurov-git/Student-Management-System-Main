@@ -1,0 +1,160 @@
+{% extends "portal/base.html" %}
+{% block title %}Tələbələr{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Tələbələr</h1>
+    <p class="lead">Qeydiyyat, qrup əlavəsi, filter və qrup üzrə axtarış.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-primary" href="{% url 'portal:student_add' %}">+ Yeni tələbə</a>
+  </div>
+</div>
+
+<div class="card group-quick-add">
+  <div class="section-title" style="margin-bottom:0.6rem;text-transform:none;letter-spacing:0;font-size:0.92rem;color:var(--text);">Yeni qrup</div>
+  <p style="margin:0 0 0.85rem;font-size:0.86rem;color:var(--text-secondary);">Qrup adı və aylıq məbləği daxil edin — tələbə formasında bu qrup seçilə biləcək.</p>
+  <form method="post" action="{% url 'portal:student_group_add' %}" class="toolbar" style="flex-wrap:wrap;gap:0.75rem;">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    {% for field in group_form %}
+    <div class="field" style="min-width:10rem;">
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field.errors }}
+      {{ field }}
+    </div>
+    {% endfor %}
+    <div class="field" style="align-self:flex-end;"><button type="submit" class="btn btn-secondary">Qrupu saxla</button></div>
+  </form>
+</div>
+
+{% if student_groups %}
+<div class="card" style="padding:0.75rem 1rem;">
+  <div class="group-chips">
+    {% if selected_student_group %}
+    <a class="chip" href="{% url 'portal:student_list' %}">Hamısı</a>
+    {% else %}
+    <span class="chip is-active">Hamısı</span>
+    {% endif %}
+    {% for g in student_groups %}
+    {% if selected_student_group == g.pk|stringformat:"s" %}
+    <span class="chip is-active">{{ g.name }} · {{ g.monthly_fee|floatformat:0 }} ₼</span>
+    {% else %}
+    <a class="chip" href="{% url 'portal:student_list' %}?student_group={{ g.pk }}">{{ g.name }} · {{ g.monthly_fee|floatformat:0 }} ₼</a>
+    {% endif %}
+    {% endfor %}
+  </div>
+  <div class="group-delete-list" style="margin-top:0.75rem;padding-top:0.85rem;border-top:1px solid var(--hairline,var(--border));">
+    <div class="section-title" style="margin-bottom:0.55rem;text-transform:none;letter-spacing:0;font-size:0.85rem;color:var(--text-secondary);">Qrup silmə</div>
+    {% for g in student_groups %}
+    <div class="toolbar" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;padding:0.35rem 0;border-bottom:1px solid var(--hairline,var(--border));">
+      <span style="font-size:0.9rem;"><strong>{{ g.name }}</strong> · {{ g.monthly_fee|floatformat:0 }} ₼</span>
+      <form method="post" action="{% url 'portal:student_group_delete' g.pk %}" class="toolbar" style="flex-wrap:nowrap;gap:0.5rem;margin:0;" onsubmit="return confirm('«{{ g.name|escapejs }}» qrupunu silmək istədiyinizə əminsiniz? Bu qrupa bağlı tələbələrin «Qrup» seçimi sıfırlanacaq; qrup sahəsindəki köhnə mətn saxlanıla bilər — tələbəni redaktə edərək yeniləmək mümkündür.');">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <button type="submit" class="btn btn-danger btn-sm">Sil</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<form method="get" class="card toolbar">
+  {% if selected_student_group %}
+  <input type="hidden" name="student_group" value="{{ selected_student_group }}">
+  {% endif %}
+  <div class="field field-grow">
+    <label for="id_q">Axtarış</label>
+    <input class="field-control" id="id_q" type="search" name="q" value="{{ request.GET.q }}" placeholder="Ad, soyad, telefon, qrup…" autocomplete="off">
+  </div>
+  <div class="field">
+    <label for="id_cg">Qrup (mətn)</label>
+    <input class="field-control" id="id_cg" type="text" name="class_group" value="{{ request.GET.class_group }}" placeholder="Məs.: Online 1" list="class-groups">
+    <datalist id="class-groups">
+      {% for g in class_groups %}<option value="{{ g }}"></option>{% endfor %}
+    </datalist>
+  </div>
+  <div class="field" style="align-self:flex-end;padding-bottom:0.15rem;">
+    <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;text-transform:none;font-weight:500;">
+      <input type="checkbox" name="archived" value="1" {% if request.GET.archived == '1' %}checked{% endif %}> Arxivi göstər
+    </label>
+  </div>
+  <div class="field" style="align-self:flex-end;">
+    <button type="submit" class="btn btn-primary">Tətbiq et</button>
+  </div>
+</form>
+
+<form id="bulk-student-archive" method="post" action="{% url 'portal:student_bulk_archive' %}">{% csrf_token %}</form>
+
+<div class="card toolbar bulk-student-bar" style="flex-wrap:wrap;gap:0.65rem;align-items:center;">
+  <span style="font-size:0.86rem;color:var(--text-secondary);">Toplu:</span>
+  <button type="submit" form="bulk-student-archive" class="btn btn-danger btn-sm" onclick="return confirm('Seçilmiş tələbələr arxivə köçürülsün? (Ödəniş tarixçəsi saxlanılır.)');">Seçilənləri sil (arxiv)</button>
+  {% if bulk_matching_count %}
+  <form method="post" action="{% url 'portal:student_bulk_archive_filtered' %}" style="margin:0;display:inline;" onsubmit="return confirm('Cari filtrə uyğun {{ bulk_matching_count }} aktiv tələbənin hamısı arxivə köçürülsün? Bu əməliyyat səhifələmədən bütün uyğun sıralara şamil olunur.');">
+    {% csrf_token %}
+    <input type="hidden" name="q" value="{{ request.GET.q|default:'' }}">
+    <input type="hidden" name="class_group" value="{{ request.GET.class_group|default:'' }}">
+    <input type="hidden" name="student_group" value="{{ selected_student_group|default:'' }}">
+    {% if request.GET.archived == '1' %}<input type="hidden" name="archived" value="1">{% endif %}
+    <button type="submit" class="btn btn-danger btn-sm">Filtr üzrə hamısını sil (arxiv) · {{ bulk_matching_count }}</button>
+  </form>
+  {% endif %}
+  {% if bulk_group and bulk_group_count %}
+  <form method="post" action="{% url 'portal:student_bulk_archive_group' bulk_group.pk %}" style="margin:0;display:inline;" onsubmit="return confirm('«{{ bulk_group.name|escapejs }}» qrupunun bütün aktiv tələbələri ({{ bulk_group_count }}) arxivə köçürülsün? Axtarış mətnindən asılı olmayaraq qrupdakı hamısıdır.');">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <button type="submit" class="btn btn-danger btn-sm outline">Qrupun hamısı · {{ bulk_group_count }}</button>
+  </form>
+  {% endif %}
+</div>
+
+<div class="card" style="padding:0;overflow:hidden;">
+  <table class="data">
+    <thead><tr>
+      <th class="num" style="width:2.5rem;"><input type="checkbox" id="bulk-check-all" aria-label="Bu səhifədə hamısı" title="Bu səhifədə hamısı"></th>
+      <th>Ad soyad</th><th>Telefon</th><th>Qrup</th><th>Status</th><th class="table-actions">Əməliyyat</th>
+    </tr></thead>
+    <tbody>
+      {% for s in students %}
+      <tr>
+        <td class="num" style="vertical-align:middle;">
+          {% if not s.is_archived %}
+          <input type="checkbox" form="bulk-student-archive" name="ids" value="{{ s.pk }}" class="bulk-student-cb" aria-label="{{ s.full_name }}">
+          {% else %}—{% endif %}
+        </td>
+        <td><a href="{% url 'portal:student_detail' s.pk %}"><strong>{{ s.full_name }}</strong></a></td>
+        <td style="font-family:var(--mono);font-size:0.82rem;">{{ s.phone }}</td>
+        <td><span class="badge badge-muted">{{ s.class_group }}</span></td>
+        <td>
+          {% if s.status == 'active' %}<span class="badge badge-ok">Aktiv</span>{% else %}<span class="badge badge-muted">Passiv</span>{% endif %}
+          {% if s.is_archived %}<span class="badge badge-warn">arxiv</span>{% endif %}
+        </td>
+        <td class="table-actions">
+          {% if not s.is_archived %}
+          <form method="post" action="{% url 'portal:student_archive' s.pk %}" style="display:inline;margin:0;padding:0;border:0;" onsubmit="return confirm('«{{ s.full_name|escapejs }}» arxivə köçürülsün? Ödəniş tarixçəsi saxlanılır.');">
+            {% csrf_token %}
+            <button type="submit" class="btn-link danger" style="font-size:inherit;">Sil</button>
+          </form>
+          <span class="table-actions-sep" aria-hidden="true">·</span>
+          {% endif %}
+          <a href="{% url 'portal:student_edit' s.pk %}">Redaktə</a><a href="{% url 'portal:student_detail' s.pk %}">Profil</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6"><div class="empty-state"><strong>Nəticə yoxdur</strong>Filtr və ya axtarışı dəyişin.</div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<script>
+(function () {
+  var head = document.getElementById('bulk-check-all');
+  if (!head) return;
+  head.addEventListener('change', function () {
+    document.querySelectorAll('.bulk-student-cb').forEach(function (cb) { cb.checked = head.checked; });
+  });
+})();
+</script>
+{% include "portal/partials/pagination.html" %}
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "portal/base.html" %}
+{% load portal_tags %}
+{% block title %}Ödənişlər (siyahı){% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Ödəniş qeydləri — siyahı</h1>
+    <p class="lead">
+      Əsas görünüş: <a href="{% url 'portal:payment_grid' %}?year={{ filter_year }}">İllik şəbəkə</a>.
+      Bu səhifə köhnə filtrlər və dəqiq düzəliş üçündür. Seçilmiş ay üçün gəlir: <strong style="color:var(--text);">{{ month_revenue|floatformat:2 }} ₼</strong> (yalnız «Ödənib»).</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-primary" href="{% url 'portal:payment_add' %}">+ Ödəniş qeydi</a>
+  </div>
+</div>
+
+<form method="get" class="card toolbar">
+  <div class="field"><label>İl</label><input class="field-control" type="number" name="year" value="{{ filter_year }}"></div>
+  <div class="field"><label>Ay</label><input class="field-control" type="number" name="month" min="1" max="12" value="{{ filter_month }}"></div>
+  <div class="field field-grow"><label>Axtarış</label><input class="field-control" type="search" name="q" value="{{ request.GET.q }}" placeholder="Tələbə adı…"></div>
+  <input type="hidden" name="mode" value="{{ mode }}">
+  <div class="field" style="align-self:flex-end;"><button type="submit" class="btn btn-primary">Göstər</button></div>
+</form>
+
+<div class="toolbar" style="margin-top:-0.25rem;">
+  <a class="btn {% if mode == '' %}btn-primary{% else %}btn-ghost{% endif %}" href="?{% query_transform request mode='' %}">Cədvəl rejimi</a>
+  <a class="btn {% if mode == 'overdue' %}btn-primary{% else %}btn-ghost{% endif %}" href="?{% query_transform request mode='overdue' %}">Gecikənlər</a>
+</div>
+
+<div class="card" style="padding:0;overflow:hidden;">
+  <table class="data">
+    <thead><tr><th>Tələbə</th><th>Ay / İl</th><th>Məbləğ</th><th>Status</th><th>Qalıq borc</th><th></th></tr></thead>
+    <tbody>
+      {% for p in payments %}
+      <tr>
+        <td><strong>{{ p.student.full_name }}</strong></td>
+        <td style="font-family:var(--mono);font-size:0.82rem;">{{ p.month }} / {{ p.year }}</td>
+        <td style="font-family:var(--mono);">{{ p.amount }} ₼</td>
+        <td>
+          {% if p.status == 'paid' %}<span class="badge badge-ok">{{ p.get_status_display }}</span>
+          {% elif p.status == 'late' %}<span class="badge badge-warn">{{ p.get_status_display }}</span>
+          {% else %}<span class="badge badge-bad">{{ p.get_status_display }}</span>{% endif %}
+        </td>
+        <td style="font-family:var(--mono);font-size:0.82rem;">{{ p.remaining_debt }}</td>
+        <td class="table-actions"><a href="{% url 'portal:payment_edit' p.pk %}">Redaktə</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6"><div class="empty-state"><strong>Qeyd yoxdur</strong>Bu filtrə uyğun ödəniş tapılmadı.</div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% include "portal/partials/pagination.html" %}
+{% endblock %}

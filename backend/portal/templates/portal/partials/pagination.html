@@ -1,0 +1,12 @@
+{% load portal_tags %}
+{% if page_obj.has_other_pages %}
+<nav class="pager" aria-label="Səhifələşmə">
+  {% if page_obj.has_previous %}
+  <a class="pager-link" href="?{% query_transform request page=page_obj.previous_page_number %}">← Əvvəl</a>
+  {% endif %}
+  <span class="pager-info">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}
+  <a class="pager-link" href="?{% query_transform request page=page_obj.next_page_number %}">Sonra →</a>
+  {% endif %}
+</nav>
+{% endif %}

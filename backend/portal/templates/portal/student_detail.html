@@ -1,0 +1,68 @@
+{% extends "portal/base.html" %}
+{% block title %}{{ student.full_name }}{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'portal:student_list' %}">← Tələbə siyahısı</a>
+<div class="page-header">
+  <div>
+    <h1>{{ student.full_name }}</h1>
+    <p class="lead">
+      {% if student.status == 'active' %}<span class="badge badge-ok">Aktiv</span>{% else %}<span class="badge badge-muted">Passiv</span>{% endif %}
+      <span class="badge badge-muted">{{ student.class_group }}</span>
+      {% if student.student_group %}<span class="badge badge-muted">{{ student.student_group.name }} (qrup)</span>{% endif %}
+      {% if student.is_archived %}<span class="badge badge-warn">Arxiv</span>{% endif %}
+    </p>
+    <p class="text-caption" style="color:var(--text-secondary);font-size:0.88rem;">
+      Effektiv aylıq: <strong style="font-family:var(--mono);color:var(--text);">{{ student.effective_monthly_fee|floatformat:2 }}</strong> ₼
+      {% if student.monthly_tuition %} (fərdi){% elif student.student_group %} (qrupdən){% endif %}
+    </p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-primary" href="{% url 'portal:student_edit' student.pk %}">Redaktə</a>
+    {% if not student.is_archived %}
+    <form method="post" action="{% url 'portal:student_archive' student.pk %}" style="display:inline;" onsubmit="return confirm('Arxivlənsin?');">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger btn-sm">Arxivlə</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="detail-grid">
+  <div class="card">
+    <div class="section-title">Əlaqə</div>
+    <p style="margin:0.35rem 0;"><strong>Telefon</strong><br><span style="font-family:var(--mono);">{{ student.phone }}</span></p>
+    <p style="margin:0.35rem 0;"><strong>Valideyn</strong><br>{{ student.parent_phone|default:"—" }}</p>
+    <p style="margin:0.35rem 0;"><strong>Ata adı</strong><br>{{ student.father_name|default:"—" }}</p>
+  </div>
+  <div class="card">
+    <div class="section-title">Məktəb</div>
+    <p style="margin:0.35rem 0;"><strong>Qeydiyyat tarixi</strong><br>{{ student.registration_date }}</p>
+    <p style="margin:0.35rem 0;"><strong>Qeyd</strong><br><span style="color:var(--text-secondary);font-size:0.9rem;">{{ student.notes|default:"—"|linebreaksbr }}</span></p>
+  </div>
+</div>
+
+<div class="section-title">Ödəniş tarixçəsi</div>
+<div class="card" style="padding:0;overflow:hidden;">
+  <table class="data">
+    <thead><tr><th>Ay / İl</th><th>Məbləğ</th><th>Status</th><th>Qalıq</th></tr></thead>
+    <tbody>
+      {% for p in payments %}
+      <tr>
+        <td>{{ p.month }}/{{ p.year }}</td>
+        <td style="font-family:var(--mono);">{{ p.amount }}</td>
+        <td>
+          {% if p.status == 'paid' %}<span class="badge badge-ok">{{ p.get_status_display }}</span>
+          {% elif p.status == 'late' %}<span class="badge badge-warn">{{ p.get_status_display }}</span>
+          {% else %}<span class="badge badge-bad">{{ p.get_status_display }}</span>{% endif %}
+        </td>
+        <td>{{ p.remaining_debt }}</td>
+      </tr>
+      {% empty %}<tr><td colspan="4"><div class="empty-state">Ödəniş qeydi yoxdur.</div></td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<p style="margin-top:1rem;">
+  <a class="btn btn-ghost btn-sm" href="{% url 'portal:payment_grid' %}">İllik ödəniş cədvəli</a>
+</p>
+{% endblock %}

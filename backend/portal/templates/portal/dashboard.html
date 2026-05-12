@@ -1,0 +1,135 @@
+{% extends "portal/base.html" %}
+{% block title %}İdarə paneli{% endblock %}
+{% block content %}
+<div class="dashboard">
+  <header class="page-header">
+    <div>
+      <h1>İdarə paneli</h1>
+      <p class="lead">Qısa göstəricilər — {{ today|date:"j F Y" }}</p>
+    </div>
+  </header>
+
+  <section class="dash-section" aria-labelledby="dash-actions-heading">
+    <h2 id="dash-actions-heading" class="dash-section__title">Tez keçidlər</h2>
+    <div class="quick-actions">
+      <a class="quick-card" href="{% url 'portal:student_add' %}"><span class="ico">+</span> Yeni tələbə</a>
+      <a class="quick-card" href="{% url 'portal:payment_grid' %}?year={{ today.year }}"><span class="ico">▦</span> İllik ödəniş şəbəkəsi</a>
+      <a class="quick-card" href="{% url 'portal:payment_add' %}"><span class="ico">₼</span> Ödəniş qeydi</a>
+    </div>
+  </section>
+
+  <section class="dash-section" aria-labelledby="dash-stats-heading">
+    <h2 id="dash-stats-heading" class="dash-section__title">Ümumi göstəricilər</h2>
+    <div class="grid-stats">
+      <div class="stat"><div class="l">Aktiv tələbə</div><div class="v">{{ active_students }}</div></div>
+      <div class="stat"><div class="l">Aylıq faktiki (ödənib), ₼</div><div class="v">{{ month_revenue|floatformat:0 }}</div></div>
+    </div>
+  </section>
+
+  <section class="dash-section dash-section--panels" aria-labelledby="dash-period-heading">
+    <h2 id="dash-period-heading" class="dash-section__title">Cari dövr və proqnoz</h2>
+
+    <div class="dash-panel-grid dash-panel-grid--year">
+      <div class="dash-panel dash-panel--month-paid">
+        <div class="dash-panel__ico">₼</div>
+        <h3 class="dash-panel__title">Aylıq faktiki (ödənib)</h3>
+        <p class="dash-panel__sub">Cari təqvim ayında «ödənib» olan aylıq ödənişlərin cəmi.</p>
+        <div class="dash-panel__single">
+          <span class="dash-panel__value dash-panel__value--lg">₼ {{ month_revenue|floatformat:0 }}</span>
+        </div>
+      </div>
+      <div class="dash-panel dash-panel--month-forecast">
+        <div class="dash-panel__ico">📊</div>
+        <h3 class="dash-panel__title">Aylıq proqnoz</h3>
+        <p class="dash-panel__sub">Aktiv tələbələrin effektiv aylıq ödənişləri üzrə bir ay üçün proqnozlu cəm.</p>
+        <div class="dash-panel__single">
+          <span class="dash-panel__value dash-panel__value--lg">₼ {{ monthly_forecast|floatformat:0 }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="dash-panel-grid dash-panel-grid--year">
+      <div class="dash-panel dash-panel--year-paid">
+        <div class="dash-panel__ico">✓</div>
+        <h3 class="dash-panel__title">İllik faktiki (ödənib)</h3>
+        <p class="dash-panel__sub">{{ today.year }} təqvim ili üzrə «ödənib» statuslu qeydlərin məbləğ cəmi.</p>
+        <div class="dash-panel__single">
+          <span class="dash-panel__value dash-panel__value--lg">₼ {{ yearly_revenue_paid|floatformat:0 }}</span>
+        </div>
+      </div>
+      <div class="dash-panel dash-panel--year-forecast">
+        <div class="dash-panel__ico">📈</div>
+        <h3 class="dash-panel__title">Tədris ili üzrə proqnoz</h3>
+        <p class="dash-panel__sub">Aktiv tələbələrin effektiv aylıqları əsasında tam tədris ili üçün (12 ay, Sent–Avq) proqnozlu məbləğ cəmi.</p>
+        <div class="dash-panel__single">
+          <span class="dash-panel__value dash-panel__value--lg">₼ {{ yearly_forecast|floatformat:0 }}</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="dash-section" aria-labelledby="dash-recent-heading">
+    <div class="dash-section__bar">
+      <h2 id="dash-recent-heading" class="dash-section__title dash-section__title--inline">Son əlavə olunan tələbələr</h2>
+      <div class="page-actions"><a class="btn btn-sm btn-ghost" href="{% url 'portal:student_list' %}">Bütün siyahı</a></div>
+    </div>
+    <div class="card card--dash-recent">
+      <table class="data">
+        <thead><tr><th>Ad</th><th>Qrup</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for s in recent_students %}
+          <tr>
+            <td><a href="{% url 'portal:student_detail' s.pk %}">{{ s.full_name }}</a></td>
+            <td><span class="badge badge-muted">{{ s.class_group }}</span></td>
+            <td>{% if s.status == 'active' %}<span class="badge badge-ok">Aktiv</span>{% else %}<span class="badge badge-muted">Passiv</span>{% endif %}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3"><div class="empty-state"><strong>Hələ tələbə yoxdur</strong>İlk qeydiyyatı əlavə edin.</div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="dash-section dash-footer" aria-labelledby="dash-groups-heading">
+    <h2 id="dash-groups-heading" class="dash-section__title">Qruplar üzrə (tədris ili)</h2>
+    <p class="dash-section__lead">Aktiv, arxivdə olmayan tələbələr; «Gələn gəlir» — cari tədris ili (Sentyabr–Avqust, bütün 12 ay) üzrə «ödənib» qeydləri.</p>
+    <div class="card card--flush dash-footer__card">
+      <div class="dash-table-wrap dash-table-wrap--group-income">
+        <table class="data data--group-income">
+          <colgroup>
+            <col class="data--group-income__col-name" />
+            <col class="data--group-income__col-num" />
+            <col class="data--group-income__col-num" />
+            <col class="data--group-income__col-num" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col">Qrup</th>
+              <th scope="col" class="num">Aylıq proqnoz (₼)</th>
+              <th scope="col" class="num">Gələn gəlir (₼)</th>
+              <th scope="col" class="num">12 ay proqnoz (₼)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in group_income_rows %}
+            <tr>
+              <td class="nowrap">{{ row.group_name }}</td>
+              <td class="num mono">{{ row.monthly_forecast_azn|floatformat:0 }}</td>
+              <td class="num mono">{{ row.academic_year_paid_azn|floatformat:0 }}</td>
+              <td class="num mono">{{ row.academic_year_forecast_azn|floatformat:0 }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="4">
+                <div class="empty-state empty-state--tight"><strong>Kriteriyaya uyğun qrup yoxdur</strong>Aktiv tələbəsi olan qrup əlavə ediləndə burada görünəcək.</div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </footer>
+</div>
+{% endblock %}

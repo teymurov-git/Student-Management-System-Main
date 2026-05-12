@@ -1,0 +1,54 @@
+{% extends "portal/base.html" %}
+{% block title %}{% if object %}Redaktə{% else %}Yeni tələbə{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{% if object %}Tələbəni redaktə et{% else %}Yeni tələbə{% endif %}</h1>
+    <p class="lead">Bütün məcburi sahələri doldurun.</p>
+  </div>
+  <div class="page-actions"><a class="btn btn-ghost" href="{% if object %}{% url 'portal:student_detail' object.pk %}{% else %}{% url 'portal:student_list' %}{% endif %}">Ləğv</a></div>
+</div>
+
+<form method="post" class="card student-form-card">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<ul class="errorlist">{{ form.non_field_errors }}</ul>{% endif %}
+
+  <section class="form-section" aria-labelledby="sec-personal">
+    <h2 id="sec-personal" class="form-section__title"><span class="form-section__ico" aria-hidden="true">◎</span> Şəxsi məlumat</h2>
+    <div class="form-section__grid">
+      {% with field=form.first_name %}{% include "portal/partials/form_field.html" %}{% endwith %}
+      {% with field=form.last_name %}{% include "portal/partials/form_field.html" %}{% endwith %}
+      {% with field=form.father_name %}{% include "portal/partials/form_field.html" %}{% endwith %}
+    </div>
+  </section>
+
+  <section class="form-section" aria-labelledby="sec-contact">
+    <h2 id="sec-contact" class="form-section__title"><span class="form-section__ico" aria-hidden="true">☎</span> Əlaqə</h2>
+    <div class="form-section__grid">
+      {% with field=form.phone %}{% include "portal/partials/form_field.html" %}{% endwith %}
+      {% with field=form.parent_phone %}{% include "portal/partials/form_field.html" %}{% endwith %}
+    </div>
+  </section>
+
+  <section class="form-section" aria-labelledby="sec-group">
+    <h2 id="sec-group" class="form-section__title"><span class="form-section__ico" aria-hidden="true">▦</span> Qrup və ödəniş</h2>
+    <div class="form-section__grid">
+      {% with field=form.student_group %}{% include "portal/partials/form_field.html" %}{% endwith %}
+      {% with field=form.monthly_tuition %}{% include "portal/partials/form_field.html" %}{% endwith %}
+      {% with field=form.registration_date %}{% include "portal/partials/form_field.html" %}{% endwith %}
+      {% with field=form.status %}{% include "portal/partials/form_field.html" %}{% endwith %}
+    </div>
+  </section>
+
+  <section class="form-section" aria-labelledby="sec-notes">
+    <h2 id="sec-notes" class="form-section__title"><span class="form-section__ico" aria-hidden="true">✎</span> Qeyd</h2>
+    <div class="form-section__grid form-section__grid--full">
+      {% with field=form.notes %}{% include "portal/partials/form_field.html" %}{% endwith %}
+    </div>
+  </section>
+
+  <p class="student-form-actions">
+    <button type="submit" class="btn btn-primary">Saxla</button>
+  </p>
+</form>
+{% endblock %}

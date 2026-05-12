@@ -1,0 +1,86 @@
+{% extends "portal/base.html" %}
+{% block title %}İllik ödəniş şəbəkəsi{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>İllik ödənişlər</h1>
+    <p class="text-caption" style="color:var(--text-secondary);margin:0 0 0.35rem 0;">
+      Tədris ili: Sentyabr – Avqust (sütunlar bu sıradadır).
+    </p>
+    <p class="lead">
+      Ümumi {{ grid_year }} (yalnız «Ödənib»): <strong style="color:var(--text);">{{ year_total_paid|floatformat:2 }} ₼</strong>.
+      Köhnə sıra üçün <a href="{% url 'portal:payment_list' %}">cədvəl siyahısı</a>.
+    </p>
+  </div>
+  <div class="page-actions toolbar pay-year-toolbar">
+    <a class="btn btn-ghost" href="?year={{ prev_year }}" aria-label="{{ prev_year }}">← {{ prev_year }}</a>
+    <span class="badge badge-muted" style="align-self:center;">{{ grid_year }}</span>
+    <a class="btn btn-ghost" href="?year={{ next_year }}" aria-label="{{ next_year }}">{{ next_year }} →</a>
+    <a class="btn btn-secondary" href="{% url 'portal:payment_add' %}?year={{ grid_year }}">+ Ayrıca qeyd</a>
+  </div>
+</div>
+
+<div class="card pay-grid-legend">
+  <span style="margin-right:0.75rem;font-weight:600;">Xülasə:</span>
+  <span class="pct pct-paid" aria-hidden="true">✓</span> Ödənib
+  &nbsp;·&nbsp;
+  <span class="pct pct-late">!</span> Gecikib
+  &nbsp;·&nbsp;
+  <span class="pct pct-unpaid">—</span> Ödənməyib
+</div>
+
+<div class="card pay-grid-wrap">
+  <div class="pay-grid-scroll">
+    <table class="data pay-grid">
+      <thead>
+        <tr>
+          <th class="sticky-col">Tələbə</th>
+          {% for col in months_row %}
+          <th class="pay-grid-month"><span>{{ col.label }}</span></th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in student_rows %}
+        <tr>
+          <td class="sticky-col pay-grid-name"><a href="{% url 'portal:student_detail' row.student.pk %}">{{ row.student.full_name }}</a></td>
+          {% for cell in row.cells %}
+          <td class="pay-cell {% if cell.payment %}{% if cell.payment.status == 'paid' %}is-paid{% elif cell.payment.status == 'late' %}is-late{% else %}is-unpaid{% endif %}{% else %}is-empty{% endif %}">
+            <form method="post" action="{% url 'portal:payment_set_status' %}" class="pay-cell-actions">
+              {% csrf_token %}
+              <input type="hidden" name="student_id" value="{{ row.student.pk }}">
+              <input type="hidden" name="year" value="{{ grid_year }}">
+              <input type="hidden" name="month" value="{{ cell.month }}">
+              <div class="pay-cell-top">
+                {% if cell.payment %}
+                  {% if cell.payment.status == 'paid' %}<span class="pill pill-ok" title="{{ cell.payment.amount }} ₼">{{ cell.payment.amount|floatformat:0 }}</span>
+                  {% elif cell.payment.status == 'late' %}<span class="pill pill-warn" title="{{ cell.payment.amount }} ₼">{{ cell.payment.amount|floatformat:0 }}</span>
+                  {% else %}<span class="pill pill-bad">{{ cell.payment.amount|floatformat:0 }}</span>
+                  {% endif %}
+                {% else %}
+                  {% if row.student.effective_monthly_fee %}
+                  <span class="pill pill-muted">{{ row.student.effective_monthly_fee|floatformat:0 }}</span>
+                  {% else %}<span class="pill pill-muted">0</span>{% endif %}
+                {% endif %}
+              </div>
+              <div class="pay-cell-buttons">
+                <button type="submit" name="status" value="paid" class="pct pct-paid" title="Ödənib">✓</button>
+                <button type="submit" name="status" value="late" class="pct pct-late" title="Gecikib">!</button>
+                <button type="submit" name="status" value="unpaid" class="pct pct-unpaid" title="Ödənməyib">—</button>
+              </div>
+            </form>
+          </td>
+          {% endfor %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="13"><div class="empty-state">Heç aktiv tələbə yoxdur.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<p class="text-caption" style="color:var(--text-secondary);font-size:0.85rem;margin-top:0.75rem;">
+  Hər xanada növbəti statusu seçmək üçün düymələri bir dəfə klik edin — məbləğ fərdi/qrup aylığından götürülür.
+</p>
+{% endblock %}

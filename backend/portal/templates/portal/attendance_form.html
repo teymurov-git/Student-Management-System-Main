@@ -1,0 +1,19 @@
+{% extends "portal/base.html" %}
+{% block title %}Davamiyyət qeydi{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Yeni davamiyyət</h1><p class="lead">Eyni tələbə + tarix üçün təkrar yoxdur.</p></div>
+  <div class="page-actions"><a class="btn btn-ghost" href="{% url 'portal:attendance_list' %}">Ləğv</a></div>
+</div>
+<form method="post" class="card" style="max-width:32rem;">
+  {% csrf_token %}
+  {% for field in form %}
+  <div>
+    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {{ field.errors }}
+    {{ field }}
+  </div>
+  {% endfor %}
+  <p style="margin-top:1.25rem;"><button type="submit" class="btn btn-primary">Saxla</button></p>
+</form>
+{% endblock %}

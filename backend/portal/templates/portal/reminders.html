@@ -1,0 +1,26 @@
+{% extends "portal/base.html" %}
+{% block title %}Xatırlatmalar{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Ödəniş xatırlatmaları</h1>
+    <p class="lead">Cari ay üçün ödənməyən və ya gecikən qeydlər — zəng / SMS üçün siyahı.</p>
+  </div>
+</div>
+<div class="card" style="padding:0;overflow:hidden;">
+  <table class="data">
+    <thead><tr><th>Tələbə</th><th>Telefon</th><th>Valideyn</th><th>Məbləğ</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for p in items %}
+      <tr>
+        <td><strong>{{ p.student.full_name }}</strong></td>
+        <td style="font-family:var(--mono);font-size:0.82rem;">{{ p.student.phone }}</td>
+        <td style="font-family:var(--mono);font-size:0.82rem;">{{ p.student.parent_phone|default:"—" }}</td>
+        <td>{{ p.amount }} ₼</td>
+        <td><span class="badge badge-warn">{{ p.get_status_display }}</span></td>
+      </tr>
+      {% empty %}<tr><td colspan="5"><div class="empty-state"><strong>Hazırda gözləyən yoxdur</strong>Bu ay üçün gözləyən qeyd tapılmadı.</div></td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends "portal/base.html" %}
+{% load portal_tags %}
+{% block title %}Sınaqlar{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Sınaq nəticələri</h1>
+    <p class="lead">Tələbə seçəndə inkişaf diaqramı və zəif fənlər göstərilir.</p>
+  </div>
+  <div class="page-actions"><a class="btn btn-primary" href="{% url 'portal:exam_add' %}">+ Nəticə</a></div>
+</div>
+<form method="get" class="card toolbar">
+  <div class="field field-grow">
+    <label>Tələbə üzrə analiz</label>
+    <select class="field-control" name="student" onchange="this.form.submit()" style="max-width:22rem;">
+      <option value="">— Hamısı —</option>
+      {% for st in students %}
+      <option value="{{ st.pk }}" {% if filter_student == st.pk %}selected{% endif %}>{{ st.full_name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+</form>
+{% if filter_student %}
+<div class="card">
+  <div style="display:flex;flex-wrap:wrap;gap:1rem;align-items:center;margin-bottom:0.75rem;">
+    <p style="margin:0;"><strong>Ən yüksək faiz:</strong> {% if best_pct %}<span class="badge badge-ok" style="font-size:0.85rem;padding:0.35rem 0.65rem;">{{ best_pct }}%</span>{% else %}—{% endif %}</p>
+  </div>
+  {% if chart_rows %}
+  <p style="margin:0 0 0.5rem;font-size:0.75rem;color:var(--text-secondary);text-transform:uppercase;">İnkişaf</p>
+  {% for row in chart_rows %}
+  <div class="bar-row">
+    <span style="width:4rem;font-family:var(--mono);font-size:0.78rem;">{{ row.l }}</span>
+    <div class="bar-bg"><div class="bar-fg" style="width:{{ row.p }}%;"></div></div>
+    <span style="font-family:var(--mono);">{{ row.p }}%</span>
+  </div>
+  {% endfor %}
+  {% endif %}
+  {% if weak_topics %}
+  <p style="margin:1rem 0 0.35rem;font-size:0.75rem;color:var(--text-secondary);text-transform:uppercase;">Zəif fənlər (orta)</p>
+  <ul style="margin:0;padding-left:1.2rem;font-size:0.88rem;color:var(--text-secondary);">
+    {% for w in weak_topics %}<li><strong style="color:var(--text);">{{ w.subject }}</strong> — {{ w.avg }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+</div>
+{% endif %}
+<div class="card" style="padding:0;overflow:hidden;">
+  <table class="data">
+    <thead><tr><th>Tələbə</th><th>Ay / İl</th><th>Faiz</th><th>Ad</th><th></th></tr></thead>
+    <tbody>
+      {% for e in exams %}
+      <tr>
+        <td>{{ e.student.full_name }}</td>
+        <td style="font-family:var(--mono);font-size:0.82rem;">{{ e.month }}/{{ e.year }}</td>
+        <td><span class="badge badge-ok">{{ e.percentage }}%</span></td>
+        <td style="color:var(--text-secondary);font-size:0.85rem;">{{ e.name }}</td>
+        <td class="table-actions"><a href="{% url 'portal:exam_edit' e.pk %}">Redaktə</a></td>
+      </tr>
+      {% empty %}<tr><td colspan="5"><div class="empty-state">Nəticə yoxdur.</div></td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% include "portal/partials/pagination.html" %}
+{% endblock %}
