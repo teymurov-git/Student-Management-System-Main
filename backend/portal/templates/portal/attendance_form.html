@@ -2,18 +2,71 @@
 {% block title %}Davamiyyət qeydi{% endblock %}
 {% block content %}
 <div class="page-header">
-  <div><h1>Yeni davamiyyət</h1><p class="lead">Eyni tələbə + tarix üçün təkrar yoxdur.</p></div>
+  <div><h1>Qrup üzrə davamiyyət</h1><p class="lead">Qrup və tarix seçin, sonra hər tələbə üçün statusu saxlayın.</p></div>
   <div class="page-actions"><a class="btn btn-ghost" href="{% url 'portal:attendance_list' %}">Ləğv</a></div>
 </div>
-<form method="post" class="card" style="max-width:32rem;">
-  {% csrf_token %}
-  {% for field in form %}
-  <div>
-    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-    {{ field.errors }}
-    {{ field }}
+
+<form method="get" class="card toolbar">
+  <div class="field">
+    <label for="id_attendance_date">Tarix</label>
+    <input class="field-control" id="id_attendance_date" type="date" name="date" value="{{ attendance_date }}">
   </div>
-  {% endfor %}
-  <p style="margin-top:1.25rem;"><button type="submit" class="btn btn-primary">Saxla</button></p>
+  <div class="field field-grow">
+    <label for="id_student_group">Qrup</label>
+    <select class="field-control" id="id_student_group" name="student_group">
+      <option value="">Qrup seçin</option>
+      {% for group in student_groups %}
+      <option value="{{ group.pk }}" {% if selected_student_group == group.pk|stringformat:"s" %}selected{% endif %}>{{ group.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field" style="align-self:flex-end;"><button type="submit" class="btn btn-primary">Tələbələri göstər</button></div>
 </form>
+
+{% if errors %}
+<ul class="messages">
+  {% for error in errors %}<li class="error">{{ error }}</li>{% endfor %}
+</ul>
+{% endif %}
+
+{% if selected_group %}
+<form method="post" class="card" style="padding:0;overflow:hidden;">
+  {% csrf_token %}
+  <input type="hidden" name="date" value="{{ attendance_date }}">
+  <input type="hidden" name="student_group" value="{{ selected_group.pk }}">
+  <div style="padding:1rem;border-bottom:1px solid var(--hairline,var(--border));">
+    <strong>{{ selected_group.name }}</strong> qrupu — {{ attendance_date }}
+  </div>
+  <table class="data">
+    <thead>
+      <tr><th>Tələbə</th><th>Status</th><th>Qeyd</th></tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td><strong>{{ row.student.full_name }}</strong></td>
+        <td>
+          <div class="toolbar" style="gap:0.65rem;flex-wrap:wrap;">
+            {% for value,label in status_choices %}
+            <label style="display:flex;align-items:center;gap:0.3rem;text-transform:none;font-weight:500;">
+              <input type="radio" name="status_{{ row.student.pk }}" value="{{ value }}" {% if row.status == value %}checked{% endif %}>
+              {{ label }}
+            </label>
+            {% endfor %}
+          </div>
+        </td>
+        <td><input class="field-control" type="text" name="note_{{ row.student.pk }}" value="{{ row.note }}" placeholder="Qeyd"></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="3"><div class="empty-state">Bu qrupda aktiv tələbə yoxdur.</div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div style="padding:1rem;border-top:1px solid var(--hairline,var(--border));">
+    <button type="submit" class="btn btn-primary" {% if not rows %}disabled{% endif %}>Davamiyyəti saxla</button>
+  </div>
+</form>
+{% else %}
+<div class="card"><div class="empty-state"><strong>Qrup seçilməyib</strong>Davamiyyəti əlavə etmək üçün əvvəlcə qrup seçin.</div></div>
+{% endif %}
 {% endblock %}

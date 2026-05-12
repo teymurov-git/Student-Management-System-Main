@@ -16,7 +16,9 @@ from .serializers import AttendanceRecordSerializer
 
 
 class AttendanceRecordViewSet(viewsets.ModelViewSet):
-    queryset = AttendanceRecord.objects.select_related("student").all()
+    queryset = AttendanceRecord.objects.select_related(
+        "student", "student__student_group"
+    ).all()
     serializer_class = AttendanceRecordSerializer
     filterset_fields = ("student", "date", "status")
     search_fields = ("student__first_name", "student__last_name", "note")
@@ -27,12 +29,15 @@ class AttendanceRecordViewSet(viewsets.ModelViewSet):
         df = self.request.query_params.get("date_from")
         dt = self.request.query_params.get("date_to")
         cg = self.request.query_params.get("class_group")
+        gid = self.request.query_params.get("student_group")
         if df:
             qs = qs.filter(date__gte=df)
         if dt:
             qs = qs.filter(date__lte=dt)
         if cg:
             qs = qs.filter(student__class_group=cg)
+        if gid and str(gid).isdigit():
+            qs = qs.filter(student__student_group_id=int(gid))
         q = self.request.query_params.get("q")
         if q:
             qs = qs.filter(

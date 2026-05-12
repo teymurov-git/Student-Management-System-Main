@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView, LogoutView
-from django.db.models import Q, Sum
+from django.db.models import Count, Q, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
@@ -22,6 +22,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 
+from attendance.models import AttendanceRecord
 from audit.utils import log_audit
 from payments.models import MonthlyPayment
 from students.models import Student, StudentGroup
@@ -100,6 +101,13 @@ AZ_MONTH_SHORT = (
 
 # Cədvəldə tədris ili sırası: Sentyabr → növbəti il Avqust (təqvim ay nömrələri).
 PAYMENT_GRID_MONTH_ORDER = (9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8)
+
+
+def _parse_attendance_date(raw):
+    try:
+        return date.fromisoformat((raw or "").strip())
+    except (TypeError, ValueError):
+        return date.today()
 
 
 class PortalLoginView(LoginView):
@@ -203,7 +211,14 @@ class StudentListView(LoginRequiredMixin, ListView):
         return student_list_filtered_qs(self.request.GET).order_by("-created_at")
 
 
-class StudentCreateView(LoginRequiredMixin, CreateView):
+class StudentFormGroupContextMixin:
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["group_form"] = StudentGroupQuickForm()
+        return ctx
+
+
+class StudentCreateView(LoginRequiredMixin, StudentFormGroupContextMixin, CreateView):
     model = Student
     form_class = StudentForm
     template_name = "portal/student_form.html"
@@ -224,7 +239,7 @@ class StudentCreateView(LoginRequiredMixin, CreateView):
         return reverse("portal:student_detail", kwargs={"pk": self.object.pk})
 
 
-class StudentUpdateView(LoginRequiredMixin, UpdateView):
+class StudentUpdateView(LoginRequiredMixin, StudentFormGroupContextMixin, UpdateView):
     model = Student
     form_class = StudentForm
     template_name = "portal/student_form.html"
@@ -335,6 +350,162 @@ class StudentBulkArchiveGroupView(LoginRequiredMixin, View):
         if next_url.startswith("/") and not next_url.startswith("//"):
             return redirect(next_url)
         return redirect("portal:student_list")
+
+
+class AttendanceListView(LoginRequiredMixin, ListView):
+    model = AttendanceRecord
+    template_name = "portal/attendance_list.html"
+    context_object_name = "records"
+    paginate_by = 50
+
+    def get_queryset(self):
+        qs = AttendanceRecord.objects.select_related(
+            "student", "student__student_group"
+        ).all()
+
+        raw_date = self.request.GET.get("date", "").strip()
+        if raw_date:
+            qs = qs.filter(date=_parse_attendance_date(raw_date))
+
+        gid = self.request.GET.get("student_group", "").strip()
+        if gid.isdigit():
+            qs = qs.filter(student__student_group_id=int(gid))
+
+        class_group = self.request.GET.get("class_group", "").strip()
+        if class_group:
+            qs = qs.filter(student__class_group=class_group)
+
+        return qs.order_by("-date", "student__last_name", "student__first_name")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        qs = self.get_queryset()
+        total = qs.count()
+        attended = qs.filter(
+            status__in=[AttendanceRecord.Status.PRESENT, AttendanceRecord.Status.LATE]
+        ).count()
+        labels = dict(AttendanceRecord.Status.choices)
+        gid = self.request.GET.get("student_group", "").strip()
+        filter_date = self.request.GET.get("date", "").strip()
+        stat_date = _parse_attendance_date(filter_date)
+        stats_qs = AttendanceRecord.objects.filter(
+            date__year=stat_date.year,
+            date__month=stat_date.month,
+        )
+        if gid.isdigit():
+            stats_qs = stats_qs.filter(student__student_group_id=int(gid))
+        class_group = self.request.GET.get("class_group", "").strip()
+        if class_group:
+            stats_qs = stats_qs.filter(student__class_group=class_group)
+
+        ctx.update(
+            {
+                "overall_pct": round((attended / total * 100), 1) if total else 0.0,
+                "filter_date": filter_date,
+                "filter_class": class_group,
+                "student_groups": StudentGroup.objects.all().order_by("name"),
+                "selected_student_group": gid,
+                "month_stats": [
+                    {"status": labels.get(row["status"], row["status"]), "c": row["c"]}
+                    for row in stats_qs.values("status")
+                    .annotate(c=Count("id"))
+                    .order_by("status")
+                ],
+            }
+        )
+        return ctx
+
+
+class AttendanceGroupCreateView(LoginRequiredMixin, View):
+    template_name = "portal/attendance_form.html"
+
+    def _build_context(self, request, errors=None):
+        gid = (request.POST.get("student_group") or request.GET.get("student_group") or "").strip()
+        attendance_date = _parse_attendance_date(
+            request.POST.get("date") or request.GET.get("date")
+        )
+        group = StudentGroup.objects.filter(pk=int(gid)).first() if gid.isdigit() else None
+        rows = []
+        if group:
+            students = group.students.filter(
+                is_archived=False, status=Student.Status.ACTIVE
+            ).order_by("last_name", "first_name")
+            records = {
+                record.student_id: record
+                for record in AttendanceRecord.objects.filter(
+                    student__student_group_id=group.pk, date=attendance_date
+                )
+            }
+            for student in students:
+                record = records.get(student.pk)
+                rows.append(
+                    {
+                        "student": student,
+                        "status": record.status if record else AttendanceRecord.Status.PRESENT,
+                        "note": record.note if record else "",
+                    }
+                )
+
+        return {
+            "errors": errors or [],
+            "student_groups": StudentGroup.objects.all().order_by("name"),
+            "selected_student_group": str(group.pk) if group else gid,
+            "selected_group": group,
+            "attendance_date": attendance_date.isoformat(),
+            "status_choices": AttendanceRecord.Status.choices,
+            "rows": rows,
+        }
+
+    def get(self, request):
+        return self.render_to_response(request)
+
+    def post(self, request):
+        gid = request.POST.get("student_group", "").strip()
+        if not gid.isdigit():
+            return self.render_to_response(request, ["Qrup seçilməlidir."])
+
+        group = get_object_or_404(StudentGroup, pk=int(gid))
+        attendance_date = _parse_attendance_date(request.POST.get("date"))
+        allowed_statuses = {value for value, _label in AttendanceRecord.Status.choices}
+        students = group.students.filter(
+            is_archived=False, status=Student.Status.ACTIVE
+        ).order_by("last_name", "first_name")
+        updated = 0
+
+        for student in students:
+            status = request.POST.get(
+                f"status_{student.pk}", AttendanceRecord.Status.PRESENT
+            )
+            if status not in allowed_statuses:
+                return self.render_to_response(request, ["Yanlış davamiyyət statusu."])
+            note = request.POST.get(f"note_{student.pk}", "").strip()
+            AttendanceRecord.objects.update_or_create(
+                student=student,
+                date=attendance_date,
+                defaults={"status": status, "note": note},
+            )
+            updated += 1
+
+        log_audit(
+            request.user,
+            "bulk_upsert",
+            "AttendanceRecord",
+            "",
+            {"group": group.name, "date": attendance_date.isoformat(), "count": updated},
+        )
+        messages.success(
+            request,
+            f"«{group.name}» qrupu üçün {attendance_date.isoformat()} tarixli {updated} davamiyyət qeydi saxlanıldı.",
+        )
+        return redirect(
+            reverse("portal:attendance_list")
+            + f"?student_group={group.pk}&date={attendance_date.isoformat()}"
+        )
+
+    def render_to_response(self, request, errors=None):
+        from django.shortcuts import render
+
+        return render(request, self.template_name, self._build_context(request, errors))
 
 
 class PaymentYearGridView(LoginRequiredMixin, TemplateView):

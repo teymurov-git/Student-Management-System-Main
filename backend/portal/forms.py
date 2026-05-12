@@ -3,6 +3,7 @@ from decimal import Decimal
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
 
+from attendance.models import AttendanceRecord
 from payments.models import MonthlyPayment
 from students.models import Student, StudentGroup
 
@@ -70,6 +71,23 @@ class StudentForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+
+
+class AttendanceRecordForm(forms.ModelForm):
+    class Meta:
+        model = AttendanceRecord
+        fields = ["student", "date", "status", "note"]
+        widgets = {
+            "date": forms.DateInput(attrs={"type": "date"}),
+            "note": forms.TextInput(attrs={"placeholder": "Qeyd (istəyə bağlı)"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["student"].queryset = Student.objects.filter(
+            is_archived=False
+        ).select_related("student_group").order_by("last_name", "first_name")
+        _wire_widgets(self)
 
 
 class MonthlyPaymentForm(forms.ModelForm):

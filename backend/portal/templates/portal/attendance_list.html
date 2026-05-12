@@ -6,11 +6,19 @@
     <h1>Davamiyyət</h1>
     <p class="lead">Ümumi orta: <strong style="color:var(--text);">{{ overall_pct }}%</strong> (iştirak + gecikənlər).</p>
   </div>
-  <div class="page-actions"><a class="btn btn-primary" href="{% url 'portal:attendance_add' %}">+ Qeyd</a></div>
+  <div class="page-actions"><a class="btn btn-primary" href="{% url 'portal:attendance_add' %}">+ Qrup üzrə qeyd</a></div>
 </div>
 <form method="get" class="card toolbar">
   <div class="field"><label>Tarix</label><input class="field-control" type="date" name="date" value="{{ filter_date }}"></div>
-  <div class="field field-grow"><label>Qrup filtri</label><input class="field-control" type="text" name="class_group" value="{{ filter_class }}" placeholder="Məs.: 9A"></div>
+  <div class="field field-grow">
+    <label for="id_attendance_group">Qrup filtri</label>
+    <select class="field-control" id="id_attendance_group" name="student_group">
+      <option value="">Bütün qruplar</option>
+      {% for group in student_groups %}
+      <option value="{{ group.pk }}" {% if selected_student_group == group.pk|stringformat:"s" %}selected{% endif %}>{{ group.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
   <div class="field" style="align-self:flex-end;"><button type="submit" class="btn btn-primary">Tətbiq et</button></div>
 </form>
 {% if month_stats %}
@@ -23,15 +31,16 @@
 {% endif %}
 <div class="card" style="padding:0;overflow:hidden;">
   <table class="data">
-    <thead><tr><th>Tələbə</th><th>Tarix</th><th>Status</th></tr></thead>
+    <thead><tr><th>Tələbə</th><th>Qrup</th><th>Tarix</th><th>Status</th></tr></thead>
     <tbody>
       {% for r in records %}
       <tr>
         <td><strong>{{ r.student.full_name }}</strong></td>
+        <td><span class="badge badge-muted">{{ r.student.student_group.name|default:r.student.class_group }}</span></td>
         <td style="font-family:var(--mono);font-size:0.82rem;">{{ r.date }}</td>
         <td>{{ r.get_status_display }}</td>
       </tr>
-      {% empty %}<tr><td colspan="3"><div class="empty-state">Bu filtrə uyğun qeyd yoxdur.</div></td></tr>{% endfor %}
+      {% empty %}<tr><td colspan="4"><div class="empty-state">Bu filtrə uyğun qeyd yoxdur.</div></td></tr>{% endfor %}
     </tbody>
   </table>
 </div>
