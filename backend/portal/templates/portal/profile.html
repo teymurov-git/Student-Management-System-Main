@@ -1,0 +1,46 @@
+{% extends "portal/base.html" %}
+{% block title %}Profil{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Profil</h1>
+    <p class="lead">Admin hesabı və təhlükəsizlik məlumatları.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-primary" href="{% url 'portal:password_change' %}">Parolu dəyiş</a>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <section class="card">
+    <h2 class="section-title">Hesab məlumatı</h2>
+    <table class="data">
+      <tbody>
+        <tr>
+          <td>İstifadəçi adı</td>
+          <td><strong>{{ user.username }}</strong></td>
+        </tr>
+        <tr>
+          <td>Ad soyad</td>
+          <td>{{ user.get_full_name|default:"—" }}</td>
+        </tr>
+        <tr>
+          <td>Email</td>
+          <td>{{ user.email|default:"—" }}</td>
+        </tr>
+        <tr>
+          <td>Rol</td>
+          <td>{% if user.is_superuser %}Super admin{% elif user.is_staff %}Admin{% else %}İstifadəçi{% endif %}</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2 class="section-title">Təhlükəsizlik</h2>
+    <p class="lead">Parolu yeniləmək üçün cari parolu daxil etmək və yeni parolu təsdiqləmək lazımdır.</p>
+    <p><a class="btn" href="{% url 'portal:password_change' %}">Parolu dəyiş</a></p>
+    <p class="form-field__help">Son giriş: {{ user.last_login|date:"j F Y, H:i"|default:"Məlumat yoxdur" }}</p>
+  </section>
+</div>
+{% endblock %}

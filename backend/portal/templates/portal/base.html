@@ -77,7 +77,7 @@
       <a class="nav-link" href="{% url 'portal:export_payments_xlsx' %}"><span class="nav-ico">⬇</span> Ödəniş .xlsx</a>
     </nav>
     <div class="sidebar-footer">
-      <div class="user-chip">{{ user.username }}</div>
+      <a class="user-chip user-chip-link{% nav_active request 'profile' 'password_change' %}" href="{% url 'portal:profile' %}">{{ user.username }}</a>
       <form method="post" action="{% url 'portal:logout' %}" style="margin-top:0.5rem;">
         {% csrf_token %}
         <button type="submit" class="btn" style="width:100%;">Çıxış</button>

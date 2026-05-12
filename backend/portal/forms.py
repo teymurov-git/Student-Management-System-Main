@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from django import forms
-from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 
 from attendance.models import AttendanceRecord
 from payments.models import MonthlyPayment
@@ -20,6 +20,18 @@ def _wire_widgets(form: forms.BaseForm) -> None:
 class PortalAuthenticationForm(AuthenticationForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        _wire_widgets(self)
+
+
+class PortalPasswordChangeForm(PasswordChangeForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["old_password"].label = "Cari parol"
+        self.fields["old_password"].widget.attrs["placeholder"] = "Cari parol"
+        self.fields["new_password1"].label = "Yeni parol"
+        self.fields["new_password1"].widget.attrs["placeholder"] = "Yeni parol"
+        self.fields["new_password2"].label = "Yeni parol təsdiqi"
+        self.fields["new_password2"].widget.attrs["placeholder"] = "Yeni parolu təkrar yazın"
         _wire_widgets(self)
 
 

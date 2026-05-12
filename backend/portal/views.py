@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.auth.views import LoginView, LogoutView, PasswordChangeView
 from django.db.models import Count, Q, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
@@ -57,6 +57,7 @@ def student_list_filtered_qs(params):
 from .forms import (
     MonthlyPaymentForm,
     PortalAuthenticationForm,
+    PortalPasswordChangeForm,
     StudentForm,
     StudentGroupForm,
     StudentGroupQuickForm,
@@ -212,6 +213,21 @@ class PortalLoginView(LoginView):
 
 class PortalLogoutView(LogoutView):
     next_page = reverse_lazy("portal:login")
+
+
+class ProfileView(LoginRequiredMixin, TemplateView):
+    template_name = "portal/profile.html"
+
+
+class PortalPasswordChangeView(LoginRequiredMixin, PasswordChangeView):
+    form_class = PortalPasswordChangeForm
+    template_name = "portal/password_change_form.html"
+    success_url = reverse_lazy("portal:profile")
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, "Parol yeniləndi.")
+        return response
 
 
 class DashboardView(LoginRequiredMixin, TemplateView):
