@@ -6,13 +6,16 @@
     <h1>{% if object %}Tələbəni redaktə et{% else %}Yeni tələbə{% endif %}</h1>
     <p class="lead">Bütün məcburi sahələri doldurun.</p>
   </div>
-  <div class="page-actions"><a class="btn btn-ghost" href="{% if object %}{% url 'portal:student_detail' object.pk %}{% else %}{% url 'portal:student_list' %}{% endif %}">Ləğv</a></div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="{% url 'portal:student_group_list' %}">Qruplar</a>
+    <a class="btn btn-ghost" href="{% if object %}{% url 'portal:student_detail' object.pk %}{% else %}{% url 'portal:student_list' %}{% endif %}">Ləğv</a>
+  </div>
 </div>
 
 {% if group_form %}
 <div class="card group-quick-add" style="margin-bottom:1rem;">
   <div class="section-title" style="margin-bottom:0.6rem;text-transform:none;letter-spacing:0;font-size:0.92rem;color:var(--text);">Yeni qrup</div>
-  <p style="margin:0 0 0.85rem;font-size:0.86rem;color:var(--text-secondary);">Lazım olan qrup siyahıda yoxdursa, əvvəlcə burada yaradın. Sonra tələbə formasında həmin qrupu seçə bilərsiniz.</p>
+  <p style="margin:0 0 0.85rem;font-size:0.86rem;color:var(--text-secondary);">Lazım olan qrup siyahıda yoxdursa, əvvəlcə burada yaradın və dərs günlərini seçin. Sonra tələbə formasında həmin qrupu seçə bilərsiniz.</p>
   <form method="post" action="{% url 'portal:student_group_add' %}" class="toolbar" style="flex-wrap:wrap;gap:0.75rem;">
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ request.path }}">

@@ -2,40 +2,59 @@
 {% block title %}Davamiyyət qeydi{% endblock %}
 {% block content %}
 <div class="page-header">
-  <div><h1>Qrup üzrə davamiyyət</h1><p class="lead">Qrup və tarix seçin, sonra hər tələbə üçün statusu saxlayın.</p></div>
+  <div>
+    <h1>Qrup üzrə davamiyyət</h1>
+    <p class="lead">Qrup və tarix seçin, sonra hər tələbə üçün statusu saxlayın.</p>
+  </div>
   <div class="page-actions"><a class="btn btn-ghost" href="{% url 'portal:attendance_list' %}">Ləğv</a></div>
 </div>
 
 <form method="get" class="card toolbar">
-  <div class="field">
-    <label for="id_attendance_date">Tarix</label>
-    <input class="field-control" id="id_attendance_date" type="date" name="date" value="{{ attendance_date }}">
-  </div>
   <div class="field field-grow">
     <label for="id_student_group">Qrup</label>
-    <select class="field-control" id="id_student_group" name="student_group">
+    <select class="field-control" id="id_student_group" name="student_group" required>
       <option value="">Qrup seçin</option>
       {% for group in student_groups %}
       <option value="{{ group.pk }}" {% if selected_student_group == group.pk|stringformat:"s" %}selected{% endif %}>{{ group.name }}</option>
       {% endfor %}
     </select>
   </div>
+  <div class="field">
+    <label for="id_attendance_date">Tarix</label>
+    <input class="field-control" id="id_attendance_date" type="date" name="date" value="{{ filter_date }}" required>
+  </div>
+  <div class="field">
+    <label for="id_attendance_month">Ay</label>
+    <input class="field-control" id="id_attendance_month" type="month" name="month" value="{{ filter_month }}">
+  </div>
   <div class="field" style="align-self:flex-end;"><button type="submit" class="btn btn-primary">Tələbələri göstər</button></div>
 </form>
 
-{% if errors %}
-<ul class="messages">
-  {% for error in errors %}<li class="error">{{ error }}</li>{% endfor %}
-</ul>
+{% if selected_group %}
+{% if not is_lesson_day %}
+<div class="card card-tight">
+  <strong style="color:var(--warn);">Diqqət:</strong>
+  <span style="color:var(--text-secondary);">Seçilmiş tarix bu qrup üçün dərs günü deyil. İstəsəniz yenə də qeyd saxlaya bilərsiniz.</span>
+</div>
 {% endif %}
 
-{% if selected_group %}
+{% if month_stats %}
+<div class="card card-tight">
+  <strong style="font-size:0.8rem;color:var(--text-secondary);text-transform:uppercase;">Seçilmiş ay üzrə {{ selected_group.name }} statusları</strong>
+  <ul style="margin:0.5rem 0 0;padding-left:1.2rem;color:var(--text-secondary);font-size:0.88rem;">
+    {% for row in month_stats %}<li>{{ row.label }}: <strong style="color:var(--text);">{{ row.c }}</strong></li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
 <form method="post" class="card" style="padding:0;overflow:hidden;">
   {% csrf_token %}
-  <input type="hidden" name="date" value="{{ attendance_date }}">
   <input type="hidden" name="student_group" value="{{ selected_group.pk }}">
-  <div style="padding:1rem;border-bottom:1px solid var(--hairline,var(--border));">
-    <strong>{{ selected_group.name }}</strong> qrupu — {{ attendance_date }}
+  <input type="hidden" name="date" value="{{ filter_date }}">
+  <input type="hidden" name="month" value="{{ filter_month }}">
+  <div style="padding:1rem 1rem 0;color:var(--text-secondary);font-size:0.9rem;">
+    <strong style="color:var(--text);">{{ selected_group.name }}</strong> — {{ filter_date }}.
+    Yeni sətirlərdə ilkin seçim: <strong style="color:var(--text);">İştirak etdi</strong>.
   </div>
   <table class="data">
     <thead>
@@ -62,7 +81,8 @@
       {% endfor %}
     </tbody>
   </table>
-  <div style="padding:1rem;border-top:1px solid var(--hairline,var(--border));">
+  <div style="padding:1rem;border-top:1px solid var(--hairline,var(--border));display:flex;gap:0.75rem;justify-content:flex-end;">
+    <a class="btn btn-ghost" href="{% url 'portal:attendance_list' %}?student_group={{ selected_group.pk }}&month={{ filter_month }}">Cədvələ bax</a>
     <button type="submit" class="btn btn-primary" {% if not rows %}disabled{% endif %}>Davamiyyəti saxla</button>
   </div>
 </form>

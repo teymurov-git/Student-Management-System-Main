@@ -7,13 +7,14 @@
     <p class="lead">Qeydiyyat, qrup əlavəsi, filter və qrup üzrə axtarış.</p>
   </div>
   <div class="page-actions">
+    <a class="btn btn-ghost" href="{% url 'portal:student_group_list' %}">Qruplar</a>
     <a class="btn btn-primary" href="{% url 'portal:student_add' %}">+ Yeni tələbə</a>
   </div>
 </div>
 
 <div class="card group-quick-add">
   <div class="section-title" style="margin-bottom:0.6rem;text-transform:none;letter-spacing:0;font-size:0.92rem;color:var(--text);">Yeni qrup</div>
-  <p style="margin:0 0 0.85rem;font-size:0.86rem;color:var(--text-secondary);">Qrup adı və aylıq məbləği daxil edin — tələbə formasında bu qrup seçilə biləcək.</p>
+  <p style="margin:0 0 0.85rem;font-size:0.86rem;color:var(--text-secondary);">Qrup adı, aylıq məbləğ və dərs günlərini daxil edin — tələbə formasında bu qrup seçilə biləcək.</p>
   <form method="post" action="{% url 'portal:student_group_add' %}" class="toolbar" style="flex-wrap:wrap;gap:0.75rem;">
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ request.get_full_path }}">
@@ -38,22 +39,25 @@
     {% endif %}
     {% for g in student_groups %}
     {% if selected_student_group == g.pk|stringformat:"s" %}
-    <span class="chip is-active">{{ g.name }} · {{ g.monthly_fee|floatformat:0 }} ₼</span>
+    <span class="chip is-active">{{ g.name }} · {{ g.monthly_fee|floatformat:0 }} ₼ · {{ g.lesson_weekday_label_text|default:"Bütün günlər" }}</span>
     {% else %}
-    <a class="chip" href="{% url 'portal:student_list' %}?student_group={{ g.pk }}">{{ g.name }} · {{ g.monthly_fee|floatformat:0 }} ₼</a>
+    <a class="chip" href="{% url 'portal:student_list' %}?student_group={{ g.pk }}">{{ g.name }} · {{ g.monthly_fee|floatformat:0 }} ₼ · {{ g.lesson_weekday_label_text|default:"Bütün günlər" }}</a>
     {% endif %}
     {% endfor %}
   </div>
   <div class="group-delete-list" style="margin-top:0.75rem;padding-top:0.85rem;border-top:1px solid var(--hairline,var(--border));">
-    <div class="section-title" style="margin-bottom:0.55rem;text-transform:none;letter-spacing:0;font-size:0.85rem;color:var(--text-secondary);">Qrup silmə</div>
+    <div class="section-title" style="margin-bottom:0.55rem;text-transform:none;letter-spacing:0;font-size:0.85rem;color:var(--text-secondary);">Qrup idarəsi</div>
     {% for g in student_groups %}
     <div class="toolbar" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;padding:0.35rem 0;border-bottom:1px solid var(--hairline,var(--border));">
-      <span style="font-size:0.9rem;"><strong>{{ g.name }}</strong> · {{ g.monthly_fee|floatformat:0 }} ₼</span>
-      <form method="post" action="{% url 'portal:student_group_delete' g.pk %}" class="toolbar" style="flex-wrap:nowrap;gap:0.5rem;margin:0;" onsubmit="return confirm('«{{ g.name|escapejs }}» qrupunu silmək istədiyinizə əminsiniz? Bu qrupa bağlı tələbələrin «Qrup» seçimi sıfırlanacaq; qrup sahəsindəki köhnə mətn saxlanıla bilər — tələbəni redaktə edərək yeniləmək mümkündür.');">
-        {% csrf_token %}
-        <input type="hidden" name="next" value="{{ request.get_full_path }}">
-        <button type="submit" class="btn btn-danger btn-sm">Sil</button>
-      </form>
+      <span style="font-size:0.9rem;"><strong>{{ g.name }}</strong> · {{ g.monthly_fee|floatformat:0 }} ₼ · {{ g.lesson_weekday_label_text|default:"Bütün günlər" }}</span>
+      <div class="toolbar" style="flex-wrap:nowrap;gap:0.5rem;margin:0;">
+        <a class="btn btn-ghost btn-sm" href="{% url 'portal:student_group_edit' g.pk %}">Redaktə</a>
+        <form method="post" action="{% url 'portal:student_group_delete' g.pk %}" style="display:inline;margin:0;" onsubmit="return confirm('«{{ g.name|escapejs }}» qrupunu silmək istədiyinizə əminsiniz? Bu qrupa bağlı tələbələrin «Qrup» seçimi sıfırlanacaq.');">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button type="submit" class="btn btn-danger btn-sm">Sil</button>
+        </form>
+      </div>
     </div>
     {% endfor %}
   </div>

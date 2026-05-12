@@ -1,17 +1,86 @@
+from datetime import date, datetime
 from decimal import Decimal
 
 from django.db import models
 
 
 class StudentGroup(models.Model):
+    LESSON_WEEKDAY_CHOICES = (
+        ("0", "Bazar ertəsi"),
+        ("1", "Çərşənbə axşamı"),
+        ("2", "Çərşənbə"),
+        ("3", "Cümə axşamı"),
+        ("4", "Cümə"),
+        ("5", "Şənbə"),
+        ("6", "Bazar"),
+    )
+    LESSON_WEEKDAY_LABELS = dict(LESSON_WEEKDAY_CHOICES)
+
     name = models.CharField("Qrupun adı", max_length=80, unique=True)
     monthly_fee = models.DecimalField("Aylıq ödəniş (₼)", max_digits=12, decimal_places=2, default=0)
+    lesson_weekdays = models.CharField(
+        "Dərs günləri",
+        max_length=32,
+        blank=True,
+        default="",
+        help_text="Həftənin dərs keçirilən günləri.",
+    )
 
     class Meta:
         ordering = ["name"]
 
     def __str__(self) -> str:
         return self.name
+
+    @classmethod
+    def normalize_lesson_weekdays(cls, weekdays) -> str:
+        if not weekdays:
+            return ""
+
+        values = weekdays.split(",") if isinstance(weekdays, str) else weekdays
+        valid_values = {value for value, _label in cls.LESSON_WEEKDAY_CHOICES}
+        normalized = []
+
+        for value in values:
+            value = str(value).strip()
+            if value in valid_values and value not in normalized:
+                normalized.append(value)
+
+        return ",".join(sorted(normalized, key=int))
+
+    @property
+    def lesson_weekday_numbers(self) -> tuple[int, ...]:
+        normalized = self.normalize_lesson_weekdays(self.lesson_weekdays)
+        if not normalized:
+            return ()
+        return tuple(int(value) for value in normalized.split(","))
+
+    @property
+    def lesson_weekday_labels(self) -> tuple[str, ...]:
+        return tuple(
+            self.LESSON_WEEKDAY_LABELS[str(value)]
+            for value in self.lesson_weekday_numbers
+        )
+
+    @property
+    def lesson_weekday_label_text(self) -> str:
+        return ", ".join(self.lesson_weekday_labels)
+
+    def is_lesson_day(self, target_date: date | datetime) -> bool:
+        if isinstance(target_date, datetime):
+            target_date = target_date.date()
+        days = self.lesson_weekday_numbers
+        if not days:
+            return True
+        return target_date.weekday() in days
+
+    def clean(self):
+        super().clean()
+        self.lesson_weekdays = self.normalize_lesson_weekdays(self.lesson_weekdays)
+
+    def save(self, *args, **kwargs):
+        self.lesson_weekdays = self.normalize_lesson_weekdays(self.lesson_weekdays)
+        super().save(*args, **kwargs)
 
 
 class Student(models.Model):

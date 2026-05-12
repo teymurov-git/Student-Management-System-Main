@@ -64,7 +64,8 @@
     <div class="nav-section-label">Menyu</div>
     <nav>
       <a class="nav-link{% nav_active request 'dashboard' %}" href="{% url 'portal:dashboard' %}"><span class="nav-ico">⌂</span> İdarə paneli</a>
-      <a class="nav-link{% nav_active request 'student_list' 'student_add' 'student_edit' 'student_detail' 'student_group_add' 'student_group_delete' 'student_archive' 'student_bulk_archive' 'student_bulk_archive_filtered' 'student_bulk_archive_group' %}" href="{% url 'portal:student_list' %}"><span class="nav-ico">▤</span> Tələbələr</a>
+      <a class="nav-link{% nav_active request 'student_list' 'student_add' 'student_edit' 'student_detail' 'student_archive' 'student_bulk_archive' 'student_bulk_archive_filtered' 'student_bulk_archive_group' %}" href="{% url 'portal:student_list' %}"><span class="nav-ico">▤</span> Tələbələr</a>
+      <a class="nav-link{% nav_active request 'student_group_list' 'student_group_add' 'student_group_edit' 'student_group_delete' %}" href="{% url 'portal:student_group_list' %}"><span class="nav-ico">▦</span> Qruplar</a>
       <a class="nav-link{% nav_active request 'attendance_list' 'attendance_add' %}" href="{% url 'portal:attendance_list' %}"><span class="nav-ico">◌</span> Davamiyyət</a>
       <a class="nav-link{% nav_active request 'payment_grid' 'payment_list' 'payment_add' 'payment_edit' 'payment_set_status' %}" href="{% url 'portal:payment_grid' %}"><span class="nav-ico">◈</span> Ödənişlər</a>
     </nav>

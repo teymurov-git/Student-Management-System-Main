@@ -4,9 +4,25 @@ from .models import Student, StudentGroup
 
 
 class StudentGroupSerializer(serializers.ModelSerializer):
+    lesson_weekday_numbers = serializers.ListField(
+        child=serializers.IntegerField(),
+        read_only=True,
+    )
+    lesson_weekday_labels = serializers.ListField(
+        child=serializers.CharField(),
+        read_only=True,
+    )
+
     class Meta:
         model = StudentGroup
-        fields = ("id", "name", "monthly_fee")
+        fields = (
+            "id",
+            "name",
+            "monthly_fee",
+            "lesson_weekdays",
+            "lesson_weekday_numbers",
+            "lesson_weekday_labels",
+        )
 
 
 class StudentSerializer(serializers.ModelSerializer):

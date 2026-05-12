@@ -1,0 +1,27 @@
+{% extends "portal/base.html" %}
+{% block title %}{% if object %}Qrupu redaktə et{% else %}Yeni qrup{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{% if object %}Qrupu redaktə et{% else %}Yeni qrup{% endif %}</h1>
+    <p class="lead">Bu qrup tələbə formalarında seçim kimi görünəcək və davamiyyət cədvəlində dərs günlərini yaradacaq.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="{% url 'portal:student_group_list' %}">Ləğv</a>
+  </div>
+</div>
+
+<form method="post" class="card" style="max-width:42rem;">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<ul class="errorlist">{{ form.non_field_errors }}</ul>{% endif %}
+  {% for field in form %}
+  <div class="form-field">
+    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {{ field.errors }}
+    {{ field }}
+    {% if field.help_text %}<p class="form-field__help">{{ field.help_text }}</p>{% endif %}
+  </div>
+  {% endfor %}
+  <p style="margin-top:1.25rem;"><button type="submit" class="btn btn-primary">Saxla</button></p>
+</form>
+{% endblock %}

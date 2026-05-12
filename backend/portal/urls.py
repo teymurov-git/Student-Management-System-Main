@@ -24,7 +24,13 @@ urlpatterns = [
         views.StudentBulkArchiveGroupView.as_view(),
         name="student_bulk_archive_group",
     ),
+    path("students/groups/", views.StudentGroupListView.as_view(), name="student_group_list"),
     path("students/groups/add/", views.StudentGroupCreateView.as_view(), name="student_group_add"),
+    path(
+        "students/groups/<int:pk>/edit/",
+        views.StudentGroupUpdateView.as_view(),
+        name="student_group_edit",
+    ),
     path(
         "students/groups/<int:pk>/delete/",
         views.StudentGroupDeleteView.as_view(),
@@ -35,7 +41,7 @@ urlpatterns = [
     path("students/<int:pk>/edit/", views.StudentUpdateView.as_view(), name="student_edit"),
     path("students/<int:pk>/archive/", views.StudentArchiveView.as_view(), name="student_archive"),
     path("davamiyyet/", views.AttendanceListView.as_view(), name="attendance_list"),
-    path("davamiyyet/add/", views.AttendanceGroupCreateView.as_view(), name="attendance_add"),
+    path("davamiyyet/add/", views.AttendanceMarkView.as_view(), name="attendance_add"),
     path("odenisler/", views.PaymentYearGridView.as_view(), name="payment_grid"),
     path("odenisler/set-status/", views.PaymentSetStatusView.as_view(), name="payment_set_status"),
     path("payments/", views.PaymentListView.as_view(), name="payment_list"),

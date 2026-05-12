@@ -4,16 +4,18 @@
 <div class="page-header">
   <div>
     <h1>Davamiyyət</h1>
-    <p class="lead">Ümumi orta: <strong style="color:var(--text);">{{ overall_pct }}%</strong> (iştirak + gecikənlər).</p>
+    <p class="lead">Qrup seçin, həmin qrupun dərs günləri ay üzrə sütunlarda görünsün.</p>
   </div>
-  <div class="page-actions"><a class="btn btn-primary" href="{% url 'portal:attendance_add' %}">+ Qrup üzrə qeyd</a></div>
+  <div class="page-actions">
+    <a class="btn btn-primary" href="{% url 'portal:attendance_add' %}?student_group={{ selected_student_group }}&month={{ filter_month }}">+ Qrup üzrə qeyd</a>
+  </div>
 </div>
 <form method="get" class="card toolbar">
-  <div class="field"><label>Tarix</label><input class="field-control" type="date" name="date" value="{{ filter_date }}"></div>
+  <div class="field"><label>Ay</label><input class="field-control" type="month" name="month" value="{{ filter_month }}"></div>
   <div class="field field-grow">
-    <label for="id_attendance_group">Qrup filtri</label>
-    <select class="field-control" id="id_attendance_group" name="student_group">
-      <option value="">Bütün qruplar</option>
+    <label for="id_attendance_group">Qrup</label>
+    <select class="field-control" id="id_attendance_group" name="student_group" required>
+      <option value="">Qrup seçin</option>
       {% for group in student_groups %}
       <option value="{{ group.pk }}" {% if selected_student_group == group.pk|stringformat:"s" %}selected{% endif %}>{{ group.name }}</option>
       {% endfor %}
@@ -21,28 +23,69 @@
   </div>
   <div class="field" style="align-self:flex-end;"><button type="submit" class="btn btn-primary">Tətbiq et</button></div>
 </form>
+
+{% if selected_group %}
+<div class="card toolbar" style="justify-content:space-between;align-items:center;gap:0.75rem;">
+  <div>
+    <strong>{{ selected_group.name }}</strong>
+    <span style="color:var(--text-secondary);font-size:0.9rem;">· Dərs günləri: {{ selected_group.lesson_weekday_label_text|default:"Bütün günlər" }} · Qeydlənib: {{ marked_count }}/{{ expected_count }} · İştirak faizi: {{ overall_pct }}%</span>
+  </div>
+  <div class="toolbar" style="gap:0.5rem;">
+    <a class="btn btn-ghost btn-sm" href="{% url 'portal:attendance_list' %}?student_group={{ selected_group.pk }}&month={{ prev_month }}">Əvvəlki ay</a>
+    <a class="btn btn-ghost btn-sm" href="{% url 'portal:attendance_list' %}?student_group={{ selected_group.pk }}&month={{ next_month }}">Növbəti ay</a>
+  </div>
+</div>
+
 {% if month_stats %}
 <div class="card card-tight">
   <strong style="font-size:0.8rem;color:var(--text-secondary);text-transform:uppercase;">Bu ay status sayı</strong>
-  <ul style="margin:0.5rem 0 0;padding-left:1.2rem;color:var(--text-secondary);font-size:0.88rem;">
-    {% for row in month_stats %}<li>{{ row.status }}: <strong style="color:var(--text);">{{ row.c }}</strong></li>{% endfor %}
-  </ul>
+  <div class="toolbar" style="margin-top:0.6rem;gap:0.5rem;">
+    {% for row in month_stats %}<span class="badge {{ row.css }}">{{ row.label }}: {{ row.c }}</span>{% endfor %}
+  </div>
 </div>
 {% endif %}
-<div class="card" style="padding:0;overflow:hidden;">
-  <table class="data">
-    <thead><tr><th>Tələbə</th><th>Qrup</th><th>Tarix</th><th>Status</th></tr></thead>
-    <tbody>
-      {% for r in records %}
+
+<div class="card" style="padding:0;overflow:auto;">
+  <table class="data" style="min-width:860px;">
+    <thead>
       <tr>
-        <td><strong>{{ r.student.full_name }}</strong></td>
-        <td><span class="badge badge-muted">{{ r.student.student_group.name|default:r.student.class_group }}</span></td>
-        <td style="font-family:var(--mono);font-size:0.82rem;">{{ r.date }}</td>
-        <td>{{ r.get_status_display }}</td>
+        <th style="position:sticky;left:0;z-index:2;background:var(--surface);min-width:13rem;">Tələbə</th>
+        {% for lesson_date in lesson_dates %}
+        <th style="text-align:center;min-width:4.25rem;">
+          <a href="{% url 'portal:attendance_add' %}?student_group={{ selected_group.pk }}&date={{ lesson_date|date:'Y-m-d' }}&month={{ filter_month }}">{{ lesson_date|date:"d.m" }}</a>
+          <div style="font-size:0.72rem;color:var(--text-secondary);font-weight:500;">{{ lesson_date|date:"D" }}</div>
+        </th>
+        {% endfor %}
       </tr>
-      {% empty %}<tr><td colspan="4"><div class="empty-state">Bu filtrə uyğun qeyd yoxdur.</div></td></tr>{% endfor %}
+    </thead>
+    <tbody>
+      {% for row in attendance_rows %}
+      <tr>
+        <td style="position:sticky;left:0;background:var(--surface);z-index:1;"><strong>{{ row.student.full_name }}</strong></td>
+        {% for cell in row.cells %}
+        <td style="text-align:center;">
+          <a class="badge {{ cell.css }}" href="{{ cell.mark_url }}" title="{{ cell.label }} · {{ cell.date|date:'Y-m-d' }}" style="min-width:2.25rem;justify-content:center;text-decoration:none;">{{ cell.icon }}</a>
+        </td>
+        {% endfor %}
+      </tr>
+      {% empty %}
+      <tr><td colspan="{{ lesson_dates|length|add:'1' }}"><div class="empty-state"><strong>Bu qrupda aktiv tələbə yoxdur</strong>Tələbələri qrupa əlavə etdikdən sonra davamiyyət cədvəli görünəcək.</div></td></tr>
+      {% endfor %}
     </tbody>
   </table>
 </div>
-{% include "portal/partials/pagination.html" %}
+
+<div class="card card-tight">
+  <div class="toolbar" style="gap:0.5rem;">
+    <span class="badge badge-ok">✓ İştirak etdi</span>
+    <span class="badge badge-bad">✕ İştirak etmədi</span>
+    <span class="badge badge-warn">! Gecikdi</span>
+    <span class="badge badge-muted">--- Qeyd yoxdur</span>
+  </div>
+</div>
+{% else %}
+<div class="card">
+  <div class="empty-state"><strong>Qrup seçilməyib</strong>Davamiyyət cədvəlini görmək üçün yuxarıdan qrup seçin.</div>
+</div>
+{% endif %}
 {% endblock %}

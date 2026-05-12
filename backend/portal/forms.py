@@ -20,15 +20,39 @@ class PortalAuthenticationForm(AuthenticationForm):
         _wire_widgets(self)
 
 
-class StudentGroupQuickForm(forms.ModelForm):
+class StudentGroupForm(forms.ModelForm):
+    lesson_weekdays = forms.MultipleChoiceField(
+        choices=StudentGroup.LESSON_WEEKDAY_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label="Dərs günləri",
+        help_text="Seçilən günlərdə hər həftə dərs keçiriləcək. Heç nə seçilməsə, davamiyyət cədvəli ayın bütün günlərini göstərəcək.",
+    )
+
     class Meta:
         model = StudentGroup
-        fields = ["name", "monthly_fee"]
-        labels = {"name": "Qrup adı", "monthly_fee": "Aylıq məbləğ (₼)"}
+        fields = ["name", "monthly_fee", "lesson_weekdays"]
+        labels = {
+            "name": "Qrup adı",
+            "monthly_fee": "Aylıq məbləğ (₼)",
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if not self.is_bound and self.instance.pk:
+            self.initial["lesson_weekdays"] = [
+                str(value) for value in self.instance.lesson_weekday_numbers
+            ]
         _wire_widgets(self)
+
+    def clean_lesson_weekdays(self) -> str:
+        return StudentGroup.normalize_lesson_weekdays(
+            self.cleaned_data["lesson_weekdays"]
+        )
+
+
+class StudentGroupQuickForm(StudentGroupForm):
+    pass
 
 
 class StudentForm(forms.ModelForm):
