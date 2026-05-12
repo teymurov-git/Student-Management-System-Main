@@ -1546,7 +1546,7 @@ html[data-theme="light"] .theme-toggle:hover {
   -webkit-overflow-scrolling: touch;
 }
 .pay-grid {
-  min-width: 58rem;
+  min-width: 64rem;
   width: 100%;
   table-layout: fixed;
   margin-inline: 0;
@@ -1556,7 +1556,7 @@ html[data-theme="light"] .theme-toggle:hover {
   position: sticky;
   left: 0;
   z-index: 2;
-  width: clamp(9rem, 18%, 12rem);
+  width: clamp(13rem, 22%, 16rem);
   background: var(--surface);
   box-shadow: 3px 0 8px rgba(0, 0, 0, 0.12);
 }
@@ -1580,10 +1580,13 @@ html[data-theme="light"] .theme-toggle:hover {
   overflow-wrap: anywhere;
 }
 .pay-grid-name {
-  white-space: nowrap;
   font-size: 0.88rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.pay-grid-name a {
+  display: block;
 }
 .pay-cell {
   padding: 0.35rem !important;
@@ -1670,11 +1673,11 @@ html[data-theme="light"] .pay-grid td.sticky-col {
 }
 @media (max-width: 720px) {
   .pay-grid {
-    min-width: 52rem;
+    min-width: 60rem;
   }
   .pay-grid th.sticky-col,
   .pay-grid td.sticky-col {
-    width: 8.5rem;
+    width: 12rem;
   }
   .pay-grid-month {
     font-size: 0.66rem;
