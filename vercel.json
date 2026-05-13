@@ -1,17 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "experimentalServices": {
-    "app": {
-      "entrypoint": "api/index.py",
-      "routePrefix": "/",
-      "includeFiles": [
-        "backend/**",
-        "backend/portal/static/**",
-        "backend/staticfiles/**"
-      ]
-    }
-  },
   "buildCommand": "python backend/manage.py migrate --noinput && python backend/manage.py collectstatic --noinput",
   "builds": [
     {
