@@ -48,7 +48,8 @@ def _prepare_sqlite_path():
     Path(name).expanduser().parent.mkdir(parents=True, exist_ok=True)
 
 
-def bootstrap_vercel_sqlite():
+def bootstrap_vercel_app():
+    """Run migrations (and optional superuser) on cold start; works for Postgres or SQLite."""
     global _BOOTSTRAPPED, _BOOTSTRAP_ERROR
     if os.environ.get("VERCEL") != "1":
         return True
@@ -99,7 +100,7 @@ def _bootstrap_can_fail_open(environ):
 def _vercel_wsgi_app(environ, start_response):
     if os.environ.get("VERCEL") == "1" and not _BOOTSTRAPPED:
         try:
-            bootstrap_vercel_sqlite()
+            bootstrap_vercel_app()
         except Exception:
             if not _bootstrap_can_fail_open(environ):
                 raise
@@ -113,7 +114,7 @@ def _vercel_wsgi_app(environ, start_response):
 
 if os.environ.get("VERCEL") == "1":
     try:
-        bootstrap_vercel_sqlite()
+        bootstrap_vercel_app()
     except Exception:
         logger.error("Initial Vercel bootstrap failed; requests will retry it.")
 

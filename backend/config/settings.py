@@ -11,6 +11,15 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 IS_VERCEL = os.environ.get("VERCEL") == "1"
 
+# Vercel Marketplace Postgres (Neon və s.) çox vaxt POSTGRES_URL inject edir; Django üçün
+# dj-database-url DATABASE_URL gözləyir.
+if not os.environ.get("DATABASE_URL"):
+    _marketplace_pg = os.environ.get("POSTGRES_URL") or os.environ.get(
+        "POSTGRES_PRISMA_URL"
+    )
+    if _marketplace_pg:
+        os.environ["DATABASE_URL"] = _marketplace_pg
+
 
 def env_bool(name, default=False):
     value = os.environ.get(name)
@@ -142,7 +151,17 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 if os.environ.get("DATABASE_URL"):
-    DATABASES = {"default": dj_database_url.config(conn_max_age=600)}
+    # Serverless: avoid holding DB connections across invocations (pooler-friendly).
+    _default_conn_max_age = 0 if IS_VERCEL else 600
+    _conn_max_age = int(
+        os.environ.get("DATABASE_CONN_MAX_AGE", str(_default_conn_max_age))
+    )
+    DATABASES = {
+        "default": dj_database_url.config(
+            conn_max_age=_conn_max_age,
+            ssl_require=env_bool("DATABASE_SSL_REQUIRE", default=IS_VERCEL),
+        )
+    }
 elif IS_VERCEL:
     DATABASES = {
         "default": {
