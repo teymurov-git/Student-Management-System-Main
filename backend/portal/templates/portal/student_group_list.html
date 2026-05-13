@@ -1,10 +1,20 @@
 {% extends "portal/base.html" %}
+{% load portal_tags %}
 {% block title %}Qruplar{% endblock %}
 {% block content %}
 <div class="page-header">
   <div>
     <h1>Qruplar</h1>
-    {% if portal_academic_year_label %}
+    {% if portal_academic_year_start %}
+    <div class="text-caption" style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;color:var(--text-secondary);margin:0 0 0.35rem 0;">
+      <span style="margin:0;">Tədris ili:</span>
+      <select id="groupListAySelect" class="field-control" style="width:auto;min-width:7.25rem;font-size:0.85rem;padding:0.28rem 0.45rem;" aria-label="Tədris ili" onchange="if (this.value) window.location.href=this.value;">
+        {% for y in portal_academic_year_choices %}
+        <option value="{{ request.path }}?{% query_transform request ay=y %}"{% if y == portal_academic_year_start %} selected{% endif %}>{{ y }}–{{ y|add:1 }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% elif portal_academic_year_label %}
     <p class="text-caption" style="color:var(--text-secondary);margin:0 0 0.35rem 0;">Tədris ili: <strong>{{ portal_academic_year_label }}</strong></p>
     {% endif %}
     <p class="lead">Tələbə qruplarını, aylıq məbləği və həftəlik dərs günlərini idarə edin.</p>

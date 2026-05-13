@@ -62,6 +62,9 @@ class StudentSerializer(serializers.ModelSerializer):
         ay = attrs.get("academic_year_start")
         if ay is None and self.instance is not None:
             ay = self.instance.academic_year_start
+        if ay is None and student_group is not None:
+            ay = student_group.academic_year_start
+            attrs["academic_year_start"] = ay
         if student_group is not None and ay is not None:
             if student_group.academic_year_start != ay:
                 raise serializers.ValidationError(

@@ -63,6 +63,10 @@ def configure_student_group_academic_year_field(
     field = form.fields["academic_year_start"]
     choice_pairs = [(y, academic_year_label(y)) for y in years]
     field.choices = choice_pairs
+    # Yeni qrup: seçim siyahısı mərkəzdən ±il aralığıdır; ilkin seçim yoxdursa brauzer
+    # ən kiçik ili göstərirdi (məs. 2022). Portal tədris ili ilə uyğunlaşdırırıq.
+    if not form.is_bound and (instance is None or not instance.pk):
+        form.initial.setdefault("academic_year_start", center)
     # IntegerField yalnız field.choices saxlayır; Select isə widget.choices ilə
     # optgroup yaradır — əks halda boş <select> çıxır.
     attrs = dict(getattr(field.widget, "attrs", None) or {})
@@ -161,6 +165,11 @@ class StudentForm(forms.ModelForm):
                 "name"
             )
         self.fields["student_group"].required = False
+        # ModelForm-da bu sahə Meta.fields-də yoxdur; Django ``full_clean`` zamanı
+        # ``academic_year_start`` üçün ``blank`` yoxlamasını keçirir, lakin ``clean()``
+        # işləyərkən dəyər ``None`` qalır və qrupun ili ilə uyğunsuzluq xətası çıxır.
+        if academic_year_start is not None and not self.instance.pk:
+            self.instance.academic_year_start = academic_year_start
         _wire_widgets(self)
 
     def save(self, commit=True):

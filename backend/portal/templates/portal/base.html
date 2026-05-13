@@ -62,6 +62,7 @@
         </button>
       </div>
     </div>
+    {% block sidebar_academic_year %}
     {% if portal_academic_year_start %}
     <div class="sidebar-year" style="padding:0 1rem 0.65rem;">
       <label for="portalAySelect" class="nav-section-label" style="margin-bottom:0.35rem;">Tədris ili</label>
@@ -73,6 +74,7 @@
       <p style="margin:0.45rem 0 0;font-size:0.72rem;color:var(--text-secondary);line-height:1.35;">Yeni tədris ili üçün tələbə və qrupları əl ilə əlavə edin; avtomatik köçürmə yoxdur.</p>
     </div>
     {% endif %}
+    {% endblock %}
     <div class="nav-section-label">Menyu</div>
     <nav>
       <a class="nav-link{% nav_active request 'dashboard' %}" href="{% url 'portal:dashboard' %}"><span class="nav-ico">⌂</span> İdarə paneli</a>
