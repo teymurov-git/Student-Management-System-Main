@@ -7,10 +7,11 @@
     <p class="lead">Qrup seçin və hüceyrədəki ✓, ✕, ! düymələrinə klikləyərək davamiyyəti birbaşa cədvəldə qeyd edin.</p>
   </div>
   <div class="page-actions">
-    <a class="btn btn-primary" href="{% url 'portal:attendance_add' %}?student_group={{ selected_student_group }}&month={{ filter_month }}">+ Qrup üzrə qeyd</a>
+    <a class="btn btn-primary" href="{% url 'portal:attendance_add' %}?student_group={{ selected_student_group }}&month={{ filter_month }}{% if portal_academic_year_start %}&ay={{ portal_academic_year_start }}{% endif %}">+ Qrup üzrə qeyd</a>
   </div>
 </div>
 <form method="get" class="card toolbar">
+  {% if portal_academic_year_start %}<input type="hidden" name="ay" value="{{ portal_academic_year_start }}">{% endif %}
   <div class="field"><label>Ay</label><input class="field-control" type="month" name="month" value="{{ filter_month }}"></div>
   <div class="field field-grow">
     <label for="id_attendance_group">Qrup</label>
@@ -31,8 +32,8 @@
     <span style="color:var(--text-secondary);font-size:0.9rem;">· Dərs günləri: {{ selected_group.lesson_weekday_label_text|default:"Bütün günlər" }} · Qeydlənib: {{ marked_count }}/{{ expected_count }} · İştirak faizi: {{ overall_pct }}%</span>
   </div>
   <div class="toolbar" style="gap:0.5rem;">
-    <a class="btn btn-ghost btn-sm" href="{% url 'portal:attendance_list' %}?student_group={{ selected_group.pk }}&month={{ prev_month }}">Əvvəlki ay</a>
-    <a class="btn btn-ghost btn-sm" href="{% url 'portal:attendance_list' %}?student_group={{ selected_group.pk }}&month={{ next_month }}">Növbəti ay</a>
+    <a class="btn btn-ghost btn-sm" href="{% url 'portal:attendance_list' %}?student_group={{ selected_group.pk }}&month={{ prev_month }}{% if portal_academic_year_start %}&ay={{ portal_academic_year_start }}{% endif %}">Əvvəlki ay</a>
+    <a class="btn btn-ghost btn-sm" href="{% url 'portal:attendance_list' %}?student_group={{ selected_group.pk }}&month={{ next_month }}{% if portal_academic_year_start %}&ay={{ portal_academic_year_start }}{% endif %}">Növbəti ay</a>
   </div>
 </div>
 
@@ -47,6 +48,7 @@
 
 <form method="post" action="{% url 'portal:attendance_quick_mark' %}" class="card attendance-grid-card">
   {% csrf_token %}
+  {% if portal_academic_year_start %}<input type="hidden" name="ay" value="{{ portal_academic_year_start }}">{% endif %}
   <input type="hidden" name="student_group" value="{{ selected_group.pk }}">
   <input type="hidden" name="month" value="{{ filter_month }}">
   <table class="data" style="min-width:860px;">

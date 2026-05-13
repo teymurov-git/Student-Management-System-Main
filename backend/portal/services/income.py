@@ -59,23 +59,28 @@ def _academic_year_payments_filter(academic_year_start: date) -> Q:
     return q
 
 
-def expected_monthly_tuition_total() -> Decimal:
+def expected_monthly_tuition_total(academic_year_start: int | None = None) -> Decimal:
     """Aktiv, arxivdə olmayan tələbələr üçün effektiv aylıq ödənişlərin bir aylıq cəmi Σ."""
     total = Decimal("0")
-    qs = Student.objects.filter(is_archived=False, status=Student.Status.ACTIVE).select_related(
-        "student_group"
-    )
+    qs = Student.objects.filter(
+        is_archived=False, status=Student.Status.ACTIVE
+    ).select_related("student_group")
+    if academic_year_start is not None:
+        qs = qs.filter(academic_year_start=academic_year_start)
     for s in qs:
         total += s.effective_monthly_fee()
     return total
 
 
-def academic_year_forecast_total() -> Decimal:
+def academic_year_forecast_total(academic_year_start: int | None = None) -> Decimal:
     """Tam tədris ili (12 ay, Sentyabr–Avqust) üçün proqnoz: Σ (effektiv aylıq) × 12."""
-    return expected_monthly_tuition_total() * ACADEMIC_YEAR_MONTHS
+    return expected_monthly_tuition_total(academic_year_start) * ACADEMIC_YEAR_MONTHS
 
 
-def group_forecast_breakdown(academic_year_start_date: date) -> list[dict]:
+def group_forecast_breakdown(
+    academic_year_start_date: date,
+    roster_academic_year_start: int | None = None,
+) -> list[dict]:
     """Hər qrup üçün aylıq proqnoz, cari tədris ili (Sent–Avq) üzrə ödənib cəmi, 12 aylıq proqnoz.
 
     Boş aktiv tələbəli qruplar siyahıda göstərilmir.
@@ -85,6 +90,8 @@ def group_forecast_breakdown(academic_year_start_date: date) -> list[dict]:
         status=Student.Status.ACTIVE,
         student_group__isnull=False,
     ).select_related("student_group")
+    if roster_academic_year_start is not None:
+        active = active.filter(academic_year_start=roster_academic_year_start)
 
     monthly_by_group: dict[int, Decimal] = {}
     group_labels: dict[int, str] = {}

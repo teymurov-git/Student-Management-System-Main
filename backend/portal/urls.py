@@ -53,6 +53,22 @@ urlpatterns = [
         name="attendance_quick_mark",
     ),
     path("davamiyyet/add/", views.AttendanceMarkView.as_view(), name="attendance_add"),
+    path("sinaqlar/ayliq/", views.MonthlyExamGridView.as_view(), name="monthly_exam_grid"),
+    path(
+        "sinaqlar/ayliq/save/",
+        views.MonthlyExamScoreSaveView.as_view(),
+        name="monthly_exam_save_score",
+    ),
+    path(
+        "sinaqlar/ayliq/add/",
+        views.MonthlyExamAddView.as_view(),
+        name="monthly_exam_add",
+    ),
+    path(
+        "sinaqlar/ayliq/delete/",
+        views.MonthlyExamDeleteView.as_view(),
+        name="monthly_exam_delete",
+    ),
     path("odenisler/", views.PaymentYearGridView.as_view(), name="payment_grid"),
     path("odenisler/set-status/", views.PaymentSetStatusView.as_view(), name="payment_set_status"),
     path("payments/", views.PaymentListView.as_view(), name="payment_list"),

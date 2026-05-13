@@ -1,0 +1,112 @@
+{% extends "portal/base.html" %}
+{% block title %}Aylıq sınaq nəticələri{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Aylıq sınaq nəticələri</h1>
+    <p class="lead" style="margin-bottom:0.35rem;">
+      Qrup seçin, sütunlar üzrə faiz daxil edin. <strong>Orta faiz</strong> yalnız həmin tələbə üçün rəqəm yazılmış sınaqların ədədi ortasıdır; boş xana həmin sınağı hesablamaya daxil etmir.
+    </p>
+    <p class="text-caption" style="color:var(--text-secondary);margin:0;">Tədris ili: {{ portal_academic_year }}–{{ portal_academic_year|add:1 }}</p>
+  </div>
+</div>
+
+<form method="get" class="card toolbar pay-grid-filter">
+  <input type="hidden" name="ay" value="{{ portal_academic_year }}">
+  <div class="field field-grow">
+    <label for="id_monthly_exam_group">Qrup</label>
+    <select class="field-control" id="id_monthly_exam_group" name="student_group" onchange="this.form.submit()">
+      <option value="">— Qrup seçin —</option>
+      {% for group in student_groups %}
+      <option value="{{ group.pk }}" {% if selected_student_group == group.pk|stringformat:"s" %}selected{% endif %}>{{ group.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field" style="align-self:flex-end;">
+    <button type="submit" class="btn btn-primary">Göstər</button>
+  </div>
+</form>
+
+{% if selected_group %}
+<div class="card toolbar" style="margin-top:1rem;flex-wrap:wrap;gap:0.75rem;">
+  <form method="post" action="{% url 'portal:monthly_exam_add' %}" class="toolbar" style="flex:1;min-width:16rem;align-items:flex-end;gap:0.5rem;">
+    {% csrf_token %}
+    <input type="hidden" name="ay" value="{{ portal_academic_year }}">
+    <input type="hidden" name="student_group" value="{{ selected_student_group }}">
+    <div class="field field-grow" style="margin:0;">
+      <label for="id_new_exam_title">Yeni aylıq sınaq (sütun)</label>
+      <input class="field-control" id="id_new_exam_title" name="title" type="text" maxlength="120" placeholder="məs. Sentyabr sınağı" required>
+    </div>
+    <button type="submit" class="btn btn-secondary">+ Sütun əlavə et</button>
+  </form>
+</div>
+
+{% if monthly_exams %}
+<div class="card pay-grid-wrap" style="margin-top:1rem;">
+  <div class="pay-grid-scroll">
+    <table class="data pay-grid">
+      <thead>
+        <tr>
+          <th class="sticky-col">Tələbə</th>
+          {% for ex in monthly_exams %}
+          <th class="pay-grid-month">
+            <span>{{ ex.title }}</span>
+            <form method="post" action="{% url 'portal:monthly_exam_delete' %}" style="margin-top:0.35rem;" onsubmit="return confirm('Bu sütunu və bütün daxil edilmiş nəticələri silmək istəyirsiniz?');">
+              {% csrf_token %}
+              <input type="hidden" name="ay" value="{{ portal_academic_year }}">
+              <input type="hidden" name="student_group" value="{{ selected_student_group }}">
+              <input type="hidden" name="exam_id" value="{{ ex.pk }}">
+              <button type="submit" class="btn btn-ghost" style="font-size:0.72rem;padding:0.15rem 0.4rem;">Sil</button>
+            </form>
+          </th>
+          {% endfor %}
+          <th>Orta faiz</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in student_rows %}
+        <tr>
+          <td class="sticky-col pay-grid-name">
+            <form id="me-row-{{ row.student.pk }}" method="post" action="{% url 'portal:monthly_exam_save_score' %}">
+              {% csrf_token %}
+              <input type="hidden" name="ay" value="{{ portal_academic_year }}">
+              <input type="hidden" name="student_group" value="{{ selected_student_group }}">
+              <input type="hidden" name="student_id" value="{{ row.student.pk }}">
+            </form>
+            <a href="{% url 'portal:student_detail' row.student.pk %}">{{ row.student.full_name }}</a>
+          </td>
+          {% for cell in row.cells %}
+          <td>
+            <input class="field-control" style="width:5rem;min-width:4rem;" form="me-row-{{ row.student.pk }}" name="score_{{ cell.exam.pk }}" type="text" inputmode="decimal" placeholder="—"
+              value="{% if cell.value is not None %}{{ cell.value }}{% endif %}">
+          </td>
+          {% endfor %}
+          <td>
+            <strong>{% if row.average is not None %}{{ row.average }}%{% else %}—{% endif %}</strong>
+            <div style="margin-top:0.35rem;">
+              <button type="submit" class="btn btn-primary" style="font-size:0.8rem;padding:0.25rem 0.5rem;" form="me-row-{{ row.student.pk }}">Saxla</button>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="{{ monthly_exams|length|add:2 }}"><div class="empty-state">Bu qrupda aktiv tələbə yoxdur.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<p class="text-caption" style="color:var(--text-secondary);font-size:0.85rem;margin-top:0.75rem;">
+  Boş saxlanılmış xana həmin sınaq üçün qeydi silir. API (JWT): <code>/api/monthly-exams/grid/?student_group=…</code>
+</p>
+{% else %}
+<div class="card" style="margin-top:1rem;padding:1.25rem;">
+  <p class="empty-state" style="margin:0;">Hələ sütun yoxdur. Yuxarıdan sınağın adını yazıb «Sütun əlavə et» düyməsini sıxın.</p>
+</div>
+{% endif %}
+
+{% else %}
+<div class="card" style="margin-top:1rem;padding:1.25rem;">
+  <p class="empty-state" style="margin:0;">Zəhmət olmasa yuxarıdan qrup seçin.</p>
+</div>
+{% endif %}
+{% endblock %}

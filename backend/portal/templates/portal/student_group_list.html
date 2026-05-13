@@ -4,6 +4,9 @@
 <div class="page-header">
   <div>
     <h1>Qruplar</h1>
+    {% if portal_academic_year_label %}
+    <p class="text-caption" style="color:var(--text-secondary);margin:0 0 0.35rem 0;">Tədris ili: <strong>{{ portal_academic_year_label }}</strong></p>
+    {% endif %}
     <p class="lead">Tələbə qruplarını, aylıq məbləği və həftəlik dərs günlərini idarə edin.</p>
   </div>
   <div class="page-actions">

@@ -16,9 +16,17 @@ from exams.models import ExamResult
 from exams.serializers import ExamResultSerializer
 from payments.models import MonthlyPayment
 from payments.serializers import MonthlyPaymentSerializer
+from portal.services.income import current_academic_year_start
 
 from .models import Student
 from .serializers import StudentSerializer
+
+
+def _api_academic_year_start(request) -> int:
+    raw = request.query_params.get("academic_year_start")
+    if raw is not None and str(raw).strip().isdigit():
+        return int(str(raw).strip())
+    return current_academic_year_start().year
 
 
 class StudentViewSet(viewsets.ModelViewSet):
@@ -34,15 +42,26 @@ class StudentViewSet(viewsets.ModelViewSet):
         "notes",
     )
     ordering_fields = ("created_at", "registration_date", "last_name")
-    filterset_fields = ("class_group", "student_group", "status", "is_archived")
+    filterset_fields = (
+        "class_group",
+        "student_group",
+        "status",
+        "is_archived",
+        "academic_year_start",
+    )
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if (
-            self.action == "list"
-            and self.request.query_params.get("archived") != "1"
-        ):
-            qs = qs.filter(is_archived=False)
+        raw_ay = self.request.query_params.get("academic_year_start")
+        if self.action == "list":
+            if raw_ay is not None and str(raw_ay).strip().isdigit():
+                qs = qs.filter(academic_year_start=int(raw_ay))
+            else:
+                qs = qs.filter(academic_year_start=current_academic_year_start().year)
+            if self.request.query_params.get("archived") != "1":
+                qs = qs.filter(is_archived=False)
+        elif raw_ay is not None and str(raw_ay).strip().isdigit():
+            qs = qs.filter(academic_year_start=int(raw_ay))
         q = self.request.query_params.get("q")
         if q:
             qs = qs.filter(
@@ -62,7 +81,10 @@ class StudentViewSet(viewsets.ModelViewSet):
         return Response(StudentSerializer(student).data)
 
     def perform_create(self, serializer):
-        obj = serializer.save()
+        ay = serializer.validated_data.get("academic_year_start")
+        if ay is None:
+            ay = current_academic_year_start().year
+        obj = serializer.save(academic_year_start=ay)
         log_audit(self.request.user, "create", "Student", str(obj.pk), serializer.data)
 
     def perform_update(self, serializer):
@@ -109,7 +131,8 @@ class StudentViewSet(viewsets.ModelViewSet):
             "Arxiv",
         ]
         ws.append(headers)
-        for s in Student.objects.filter(is_archived=False):
+        ay = _api_academic_year_start(request)
+        for s in Student.objects.filter(is_archived=False, academic_year_start=ay):
             ws.append(
                 [
                     s.id,
@@ -141,7 +164,8 @@ class StudentViewSet(viewsets.ModelViewSet):
         )
         doc = SimpleDocTemplate(response, pagesize=A4)
         data = [["Ad", "Soyad", "Qrup", "Telefon", "Status"]]
-        for s in Student.objects.filter(is_archived=False)[:200]:
+        ay = _api_academic_year_start(request)
+        for s in Student.objects.filter(is_archived=False, academic_year_start=ay)[:200]:
             data.append(
                 [
                     s.first_name,

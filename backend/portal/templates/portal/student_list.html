@@ -1,9 +1,13 @@
 {% extends "portal/base.html" %}
+{% load portal_tags %}
 {% block title %}Tələbələr{% endblock %}
 {% block content %}
 <div class="page-header">
   <div>
     <h1>Tələbələr</h1>
+    {% if portal_academic_year_label %}
+    <p class="text-caption" style="color:var(--text-secondary);margin:0 0 0.35rem 0;">Tədris ili: <strong>{{ portal_academic_year_label }}</strong> (Sentyabr–Avqust)</p>
+    {% endif %}
     <p class="lead">Qeydiyyat, qrup əlavəsi, filter və qrup üzrə axtarış.</p>
   </div>
   <div class="page-actions">
@@ -18,6 +22,7 @@
   <form method="post" action="{% url 'portal:student_group_add' %}" class="group-form group-form--quick">
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    {% if portal_academic_year_start %}<input type="hidden" name="ay" value="{{ portal_academic_year_start }}">{% endif %}
     {% include "portal/partials/group_form_fields.html" with group_form=group_form submit_label="Qrupu saxla" %}
   </form>
 </div>
@@ -26,7 +31,7 @@
 <div class="card" style="padding:0.75rem 1rem;">
   <div class="group-chips">
     {% if selected_student_group %}
-    <a class="chip" href="{% url 'portal:student_list' %}">Hamısı</a>
+    <a class="chip" href="{% url 'portal:student_list' %}?{% query_transform request student_group=None %}">Hamısı</a>
     {% else %}
     <span class="chip is-active">Hamısı</span>
     {% endif %}
@@ -34,7 +39,7 @@
     {% if selected_student_group == g.pk|stringformat:"s" %}
     <span class="chip is-active">{{ g.name }} · {{ g.monthly_fee|floatformat:0 }} ₼ · {{ g.lesson_weekday_label_text|default:"Bütün günlər" }}</span>
     {% else %}
-    <a class="chip" href="{% url 'portal:student_list' %}?student_group={{ g.pk }}">{{ g.name }} · {{ g.monthly_fee|floatformat:0 }} ₼ · {{ g.lesson_weekday_label_text|default:"Bütün günlər" }}</a>
+    <a class="chip" href="{% url 'portal:student_list' %}?{% query_transform request student_group=g.pk %}">{{ g.name }} · {{ g.monthly_fee|floatformat:0 }} ₼ · {{ g.lesson_weekday_label_text|default:"Bütün günlər" }}</a>
     {% endif %}
     {% endfor %}
   </div>
@@ -48,6 +53,7 @@
         <form method="post" action="{% url 'portal:student_group_delete' g.pk %}" style="display:inline;margin:0;" onsubmit="return confirm('«{{ g.name|escapejs }}» qrupunu silmək istədiyinizə əminsiniz? Bu qrupa bağlı tələbələrin «Qrup» seçimi sıfırlanacaq.');">
           {% csrf_token %}
           <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          {% if portal_academic_year_start %}<input type="hidden" name="ay" value="{{ portal_academic_year_start }}">{% endif %}
           <button type="submit" class="btn btn-danger btn-sm">Sil</button>
         </form>
       </div>
@@ -58,6 +64,7 @@
 {% endif %}
 
 <form method="get" class="card toolbar">
+  {% if portal_academic_year_start %}<input type="hidden" name="ay" value="{{ portal_academic_year_start }}">{% endif %}
   {% if selected_student_group %}
   <input type="hidden" name="student_group" value="{{ selected_student_group }}">
   {% endif %}
@@ -82,7 +89,7 @@
   </div>
 </form>
 
-<form id="bulk-student-archive" method="post" action="{% url 'portal:student_bulk_archive' %}">{% csrf_token %}</form>
+<form id="bulk-student-archive" method="post" action="{% url 'portal:student_bulk_archive' %}">{% csrf_token %}{% if portal_academic_year_start %}<input type="hidden" name="ay" value="{{ portal_academic_year_start }}">{% endif %}</form>
 
 <div class="card toolbar bulk-student-bar" style="flex-wrap:wrap;gap:0.65rem;align-items:center;">
   <span style="font-size:0.86rem;color:var(--text-secondary);">Toplu:</span>
@@ -90,6 +97,7 @@
   {% if bulk_matching_count %}
   <form method="post" action="{% url 'portal:student_bulk_archive_filtered' %}" style="margin:0;display:inline;" onsubmit="return confirm('Cari filtrə uyğun {{ bulk_matching_count }} aktiv tələbənin hamısı arxivə köçürülsün? Bu əməliyyat səhifələmədən bütün uyğun sıralara şamil olunur.');">
     {% csrf_token %}
+    {% if portal_academic_year_start %}<input type="hidden" name="ay" value="{{ portal_academic_year_start }}">{% endif %}
     <input type="hidden" name="q" value="{{ request.GET.q|default:'' }}">
     <input type="hidden" name="class_group" value="{{ request.GET.class_group|default:'' }}">
     <input type="hidden" name="student_group" value="{{ selected_student_group|default:'' }}">
@@ -100,6 +108,7 @@
   {% if bulk_group and bulk_group_count %}
   <form method="post" action="{% url 'portal:student_bulk_archive_group' bulk_group.pk %}" style="margin:0;display:inline;" onsubmit="return confirm('«{{ bulk_group.name|escapejs }}» qrupunun bütün aktiv tələbələri ({{ bulk_group_count }}) arxivə köçürülsün? Axtarış mətnindən asılı olmayaraq qrupdakı hamısıdır.');">
     {% csrf_token %}
+    {% if portal_academic_year_start %}<input type="hidden" name="ay" value="{{ portal_academic_year_start }}">{% endif %}
     <input type="hidden" name="next" value="{{ request.get_full_path }}">
     <button type="submit" class="btn btn-danger btn-sm outline">Qrupun hamısı · {{ bulk_group_count }}</button>
   </form>
@@ -131,6 +140,7 @@
           {% if not s.is_archived %}
           <form method="post" action="{% url 'portal:student_archive' s.pk %}" style="display:inline;margin:0;padding:0;border:0;" onsubmit="return confirm('«{{ s.full_name|escapejs }}» arxivə köçürülsün? Ödəniş tarixçəsi saxlanılır.');">
             {% csrf_token %}
+            {% if portal_academic_year_start %}<input type="hidden" name="ay" value="{{ portal_academic_year_start }}">{% endif %}
             <button type="submit" class="btn-link danger" style="font-size:inherit;">Sil</button>
           </form>
           <span class="table-actions-sep" aria-hidden="true">·</span>

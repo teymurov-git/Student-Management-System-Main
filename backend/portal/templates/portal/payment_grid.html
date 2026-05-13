@@ -13,15 +13,16 @@
     </p>
   </div>
   <div class="page-actions toolbar pay-year-toolbar">
-    <a class="btn btn-ghost" href="?year={{ prev_year }}{{ group_query_suffix }}" aria-label="{{ prev_year }}">← {{ prev_year }}</a>
+    <a class="btn btn-ghost" href="?year={{ prev_year }}{{ group_query_suffix }}{{ portal_ay_qs }}" aria-label="{{ prev_year }}">← {{ prev_year }}</a>
     <span class="badge badge-muted" style="align-self:center;">{{ grid_year }}</span>
-    <a class="btn btn-ghost" href="?year={{ next_year }}{{ group_query_suffix }}" aria-label="{{ next_year }}">{{ next_year }} →</a>
-    <a class="btn btn-secondary" href="{% url 'portal:payment_add' %}?year={{ grid_year }}{{ group_query_suffix }}">+ Ayrıca qeyd</a>
+    <a class="btn btn-ghost" href="?year={{ next_year }}{{ group_query_suffix }}{{ portal_ay_qs }}" aria-label="{{ next_year }}">{{ next_year }} →</a>
+    <a class="btn btn-secondary" href="{% url 'portal:payment_add' %}?year={{ grid_year }}{{ group_query_suffix }}{{ portal_ay_qs }}">+ Ayrıca qeyd</a>
   </div>
 </div>
 
 <form method="get" class="card toolbar pay-grid-filter">
   <input type="hidden" name="year" value="{{ grid_year }}">
+  <input type="hidden" name="ay" value="{{ portal_academic_year_start }}">
   <div class="field field-grow">
     <label for="id_payment_group">Qrup</label>
     <select class="field-control" id="id_payment_group" name="student_group" onchange="this.form.submit()">
@@ -65,6 +66,7 @@
           <td class="pay-cell {% if cell.payment %}{% if cell.payment.status == 'paid' %}is-paid{% elif cell.payment.status == 'late' %}is-late{% else %}is-unpaid{% endif %}{% else %}is-empty{% endif %}">
             <form method="post" action="{% url 'portal:payment_set_status' %}" class="pay-cell-actions">
               {% csrf_token %}
+              <input type="hidden" name="ay" value="{{ portal_academic_year_start }}">
               <input type="hidden" name="student_id" value="{{ row.student.pk }}">
               <input type="hidden" name="year" value="{{ grid_year }}">
               <input type="hidden" name="month" value="{{ cell.month }}">

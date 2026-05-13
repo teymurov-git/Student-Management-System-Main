@@ -95,9 +95,17 @@ class StudentForm(forms.ModelForm):
             "notes": forms.Textarea(attrs={"rows": 3}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, academic_year_start=None, **kwargs):
+        self.academic_year_start = academic_year_start
         super().__init__(*args, **kwargs)
-        self.fields["student_group"].queryset = StudentGroup.objects.all().order_by("name")
+        if academic_year_start is not None:
+            self.fields["student_group"].queryset = StudentGroup.objects.filter(
+                academic_year_start=academic_year_start
+            ).order_by("name")
+        else:
+            self.fields["student_group"].queryset = StudentGroup.objects.all().order_by(
+                "name"
+            )
         self.fields["student_group"].required = False
         _wire_widgets(self)
 
@@ -149,12 +157,16 @@ class MonthlyPaymentForm(forms.ModelForm):
             "notes": forms.Textarea(attrs={"rows": 2}),
         }
 
-    def __init__(self, *args, user=None, **kwargs):
+    def __init__(self, *args, user=None, academic_year_start=None, **kwargs):
         self.user = user
+        self.academic_year_start = academic_year_start
         super().__init__(*args, **kwargs)
-        self.fields["student"].queryset = Student.objects.select_related(
-            "student_group"
-        ).all().order_by("last_name", "first_name")
+        qs = Student.objects.select_related("student_group").all().order_by(
+            "last_name", "first_name"
+        )
+        if academic_year_start is not None:
+            qs = qs.filter(academic_year_start=academic_year_start)
+        self.fields["student"].queryset = qs
         _wire_widgets(self)
 
     def save(self, commit=True):

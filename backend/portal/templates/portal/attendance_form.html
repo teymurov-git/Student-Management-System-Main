@@ -10,6 +10,7 @@
 </div>
 
 <form method="get" class="card toolbar">
+  {% if portal_academic_year_start %}<input type="hidden" name="ay" value="{{ portal_academic_year_start }}">{% endif %}
   <div class="field field-grow">
     <label for="id_student_group">Qrup</label>
     <select class="field-control" id="id_student_group" name="student_group" required>
@@ -49,6 +50,7 @@
 
 <form method="post" class="card" style="padding:0;overflow:hidden;">
   {% csrf_token %}
+  {% if portal_academic_year_start %}<input type="hidden" name="ay" value="{{ portal_academic_year_start }}">{% endif %}
   <input type="hidden" name="student_group" value="{{ selected_group.pk }}">
   <input type="hidden" name="date" value="{{ filter_date }}">
   <input type="hidden" name="month" value="{{ filter_month }}">
@@ -82,7 +84,7 @@
     </tbody>
   </table>
   <div style="padding:1rem;border-top:1px solid var(--hairline,var(--border));display:flex;gap:0.75rem;justify-content:flex-end;">
-    <a class="btn btn-ghost" href="{% url 'portal:attendance_list' %}?student_group={{ selected_group.pk }}&month={{ filter_month }}">Cədvələ bax</a>
+    <a class="btn btn-ghost" href="{% url 'portal:attendance_list' %}?student_group={{ selected_group.pk }}&month={{ filter_month }}{% if portal_academic_year_start %}&ay={{ portal_academic_year_start }}{% endif %}">Cədvələ bax</a>
     <button type="submit" class="btn btn-primary" {% if not rows %}disabled{% endif %}>Davamiyyəti saxla</button>
   </div>
 </form>

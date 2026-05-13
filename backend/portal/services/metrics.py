@@ -14,15 +14,19 @@ from .income import (
 )
 
 
-def get_dashboard_context() -> dict:
+def get_dashboard_context(academic_year_start: int) -> dict:
     today_d = date.today()
     active_students = Student.objects.filter(
-        is_archived=False, status=Student.Status.ACTIVE
+        is_archived=False,
+        status=Student.Status.ACTIVE,
+        academic_year_start=academic_year_start,
     ).count()
     recent_students = list(
-        Student.objects.filter(is_archived=False).select_related("student_group").order_by("-created_at")[
-            :8
-        ]
+        Student.objects.filter(
+            is_archived=False, academic_year_start=academic_year_start
+        )
+        .select_related("student_group")
+        .order_by("-created_at")[:8]
     )
     rev = MonthlyPayment.objects.filter(
         year=today_d.year,
@@ -36,12 +40,14 @@ def get_dashboard_context() -> dict:
     ).aggregate(t=Sum("amount"))["t"]
     yearly_revenue_paid = float(yearly_rev_agg) if yearly_rev_agg is not None else 0.0
 
-    teaching_forecast_dec = academic_year_forecast_total()
+    teaching_forecast_dec = academic_year_forecast_total(academic_year_start)
     teaching_forecast = float(teaching_forecast_dec)
-    monthly_forecast = float(expected_monthly_tuition_total())
+    monthly_forecast = float(expected_monthly_tuition_total(academic_year_start))
 
     ay_start = current_academic_year_start(today_d)
-    group_income_rows = group_forecast_breakdown(ay_start)
+    group_income_rows = group_forecast_breakdown(
+        ay_start, roster_academic_year_start=academic_year_start
+    )
 
     return {
         "today": today_d,

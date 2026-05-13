@@ -1,6 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.db import models
 
 
@@ -16,7 +17,11 @@ class StudentGroup(models.Model):
     )
     LESSON_WEEKDAY_LABELS = dict(LESSON_WEEKDAY_CHOICES)
 
-    name = models.CharField("Qrupun adı", max_length=80, unique=True)
+    name = models.CharField("Qrupun adı", max_length=80)
+    academic_year_start = models.PositiveSmallIntegerField(
+        "Tədris ili (başlanğıc ili)",
+        help_text="1 Sentyabr ilə başlayan tədris ili üçün təqvim ili (məs. 2025 → 2025/09–2026/08).",
+    )
     monthly_fee = models.DecimalField("Aylıq ödəniş (₼)", max_digits=12, decimal_places=2, default=0)
     lesson_weekdays = models.CharField(
         "Dərs günləri",
@@ -27,10 +32,16 @@ class StudentGroup(models.Model):
     )
 
     class Meta:
-        ordering = ["name"]
+        ordering = ["academic_year_start", "name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["name", "academic_year_start"],
+                name="students_studentgroup_name_academic_year_uniq",
+            ),
+        ]
 
     def __str__(self) -> str:
-        return self.name
+        return f"{self.name} ({self.academic_year_start})"
 
     @classmethod
     def normalize_lesson_weekdays(cls, weekdays) -> str:
@@ -103,6 +114,10 @@ class Student(models.Model):
         related_name="students",
         verbose_name="Qrup",
     )
+    academic_year_start = models.PositiveSmallIntegerField(
+        "Tədris ili (başlanğıc ili)",
+        help_text="Bu tələbə hansı tədris ili üçün qeydiyyatdadır (avtomatik köçürülmür).",
+    )
     monthly_tuition = models.DecimalField(
         "Fərdi aylıq ödəniş (₼)",
         max_digits=12,
@@ -127,6 +142,7 @@ class Student(models.Model):
             models.Index(fields=["class_group"]),
             models.Index(fields=["is_archived", "status"]),
             models.Index(fields=["student_group"]),
+            models.Index(fields=["academic_year_start", "is_archived"]),
         ]
 
     def __str__(self):
@@ -142,6 +158,15 @@ class Student(models.Model):
         if self.student_group_id:
             return self.student_group.monthly_fee
         return Decimal("0")
+
+    def clean(self):
+        super().clean()
+        if self.student_group_id and self.student_group.academic_year_start != self.academic_year_start:
+            raise ValidationError(
+                {
+                    "student_group": "Seçilmiş qrupun tədris ili bu tələbənin ili ilə eyni olmalıdır.",
+                }
+            )
 
     def save(self, *args, **kwargs):
         if self.student_group_id:

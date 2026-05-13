@@ -5,7 +5,8 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView, LogoutView, PasswordChangeView
-from django.db.models import Count, Q, Sum
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Count, Max, Q, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
@@ -25,13 +26,17 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 
 from attendance.models import AttendanceRecord
 from audit.utils import log_audit
+from exams.models import MonthlyExam, MonthlyExamScore
 from payments.models import MonthlyPayment
+from portal.academic_year import resolve_portal_academic_year_start
 from students.models import Student, StudentGroup
 
 
-def student_list_filtered_qs(params):
-    """URL GET və ya POST (gizli parametrlərlə eyni açarlar) üçün ümumi filtr."""
-    qs = Student.objects.select_related("student_group").all()
+def student_list_filtered_qs(request):
+    """URL GET və ya POST (gizli parametrlərlə eyni açarlar) üçün ümumi filtr; cari tədris ili."""
+    params = request.GET if request.method == "GET" else request.POST
+    ay = resolve_portal_academic_year_start(request)
+    qs = Student.objects.select_related("student_group").filter(academic_year_start=ay)
     if params.get("archived") != "1":
         qs = qs.filter(is_archived=False)
     q = params.get("q", "")
@@ -235,7 +240,11 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx.update(get_dashboard_context())
+        ctx.update(
+            get_dashboard_context(
+                resolve_portal_academic_year_start(self.request)
+            )
+        )
         return ctx
 
 
@@ -245,8 +254,11 @@ class StudentGroupListView(LoginRequiredMixin, ListView):
     context_object_name = "student_groups"
 
     def get_queryset(self):
-        return StudentGroup.objects.annotate(student_count=Count("students")).order_by(
-            "name"
+        ay = resolve_portal_academic_year_start(self.request)
+        return (
+            StudentGroup.objects.filter(academic_year_start=ay)
+            .annotate(student_count=Count("students"))
+            .order_by("name")
         )
 
 
@@ -256,6 +268,9 @@ class StudentGroupCreateView(LoginRequiredMixin, CreateView):
     template_name = "portal/student_group_form.html"
 
     def form_valid(self, form):
+        form.instance.academic_year_start = resolve_portal_academic_year_start(
+            self.request
+        )
         response = super().form_valid(form)
         log_audit(
             self.request.user,
@@ -289,12 +304,19 @@ class StudentGroupUpdateView(LoginRequiredMixin, UpdateView):
     form_class = StudentGroupForm
     template_name = "portal/student_group_form.html"
 
+    def get_queryset(self):
+        ay = resolve_portal_academic_year_start(self.request)
+        return StudentGroup.objects.filter(academic_year_start=ay)
+
     def form_valid(self, form):
         old_name = StudentGroup.objects.only("name").get(pk=self.object.pk).name
         response = super().form_valid(form)
         synced_count = 0
         if old_name != self.object.name:
-            synced_count = Student.objects.filter(student_group=self.object).update(
+            synced_count = Student.objects.filter(
+                student_group=self.object,
+                academic_year_start=self.object.academic_year_start,
+            ).update(
                 class_group=self.object.name,
                 updated_at=timezone.now(),
             )
@@ -319,10 +341,13 @@ class StudentGroupUpdateView(LoginRequiredMixin, UpdateView):
 
 class StudentGroupDeleteView(LoginRequiredMixin, View):
     def post(self, request, pk):
-        group = get_object_or_404(StudentGroup, pk=pk)
+        ay = resolve_portal_academic_year_start(request)
+        group = get_object_or_404(StudentGroup, pk=pk, academic_year_start=ay)
         name = group.name
         gid = group.pk
-        linked_students = Student.objects.filter(student_group_id=gid)
+        linked_students = Student.objects.filter(
+            student_group_id=gid, academic_year_start=ay
+        )
         student_count = linked_students.count()
         linked_students.update(class_group="", updated_at=timezone.now())
         group.delete()
@@ -354,34 +379,42 @@ class StudentListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ay = resolve_portal_academic_year_start(self.request)
         ctx["class_groups"] = (
-            Student.objects.exclude(class_group="")
+            Student.objects.filter(academic_year_start=ay)
+            .exclude(class_group="")
             .values_list("class_group", flat=True)
             .distinct()
             .order_by("class_group")[:80]
         )
-        ctx["student_groups"] = StudentGroup.objects.all().order_by("name")
+        ctx["student_groups"] = StudentGroup.objects.filter(
+            academic_year_start=ay
+        ).order_by("name")
         ctx["selected_student_group"] = (
             self.request.GET.get("student_group", "").strip() or ""
         )
         sel = ctx["selected_student_group"]
         ctx["bulk_matching_count"] = (
-            student_list_filtered_qs(self.request.GET).filter(is_archived=False).count()
+            student_list_filtered_qs(self.request).filter(is_archived=False).count()
         )
         ctx["bulk_group"] = None
         ctx["bulk_group_count"] = 0
         if sel.isdigit():
-            g_obj = StudentGroup.objects.filter(pk=int(sel)).first()
+            g_obj = StudentGroup.objects.filter(
+                pk=int(sel), academic_year_start=ay
+            ).first()
             ctx["bulk_group"] = g_obj
             if g_obj:
                 ctx["bulk_group_count"] = Student.objects.filter(
-                    student_group_id=g_obj.pk, is_archived=False
+                    student_group_id=g_obj.pk,
+                    is_archived=False,
+                    academic_year_start=ay,
                 ).count()
         ctx["group_form"] = StudentGroupQuickForm()
         return ctx
 
     def get_queryset(self):
-        return student_list_filtered_qs(self.request.GET).order_by("-created_at")
+        return student_list_filtered_qs(self.request).order_by("-created_at")
 
 
 class StudentFormGroupContextMixin:
@@ -396,7 +429,15 @@ class StudentCreateView(LoginRequiredMixin, StudentFormGroupContextMixin, Create
     form_class = StudentForm
     template_name = "portal/student_form.html"
 
+    def get_form_kwargs(self):
+        kw = super().get_form_kwargs()
+        kw["academic_year_start"] = resolve_portal_academic_year_start(self.request)
+        return kw
+
     def form_valid(self, form):
+        form.instance.academic_year_start = resolve_portal_academic_year_start(
+            self.request
+        )
         resp = super().form_valid(form)
         log_audit(
             self.request.user,
@@ -416,6 +457,15 @@ class StudentUpdateView(LoginRequiredMixin, StudentFormGroupContextMixin, Update
     model = Student
     form_class = StudentForm
     template_name = "portal/student_form.html"
+
+    def get_queryset(self):
+        ay = resolve_portal_academic_year_start(self.request)
+        return Student.objects.filter(academic_year_start=ay)
+
+    def get_form_kwargs(self):
+        kw = super().get_form_kwargs()
+        kw["academic_year_start"] = self.object.academic_year_start
+        return kw
 
     def form_valid(self, form):
         resp = super().form_valid(form)
@@ -438,6 +488,10 @@ class StudentDetailView(LoginRequiredMixin, DetailView):
     template_name = "portal/student_detail.html"
     context_object_name = "student"
 
+    def get_queryset(self):
+        ay = resolve_portal_academic_year_start(self.request)
+        return Student.objects.filter(academic_year_start=ay)
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         s = self.object
@@ -449,7 +503,8 @@ class StudentDetailView(LoginRequiredMixin, DetailView):
 
 class StudentArchiveView(LoginRequiredMixin, View):
     def post(self, request, pk):
-        s = get_object_or_404(Student, pk=pk)
+        ay = resolve_portal_academic_year_start(request)
+        s = get_object_or_404(Student, pk=pk, academic_year_start=ay)
         s.is_archived = True
         s.save(update_fields=["is_archived", "updated_at"])
         log_audit(request.user, "update", "Student", str(s.pk), {"is_archived": True})
@@ -471,7 +526,10 @@ class StudentBulkArchiveView(LoginRequiredMixin, View):
             messages.warning(request, "Heç bir tələbə seçilməyib.")
             return redirect("portal:student_list")
 
-        qs = Student.objects.filter(pk__in=pks, is_archived=False)
+        ay = resolve_portal_academic_year_start(request)
+        qs = Student.objects.filter(
+            pk__in=pks, is_archived=False, academic_year_start=ay
+        )
         n = qs.update(is_archived=True, updated_at=timezone.now())
         log_audit(
             request.user,
@@ -491,7 +549,7 @@ class StudentBulkArchiveFilteredView(LoginRequiredMixin, View):
     """
 
     def post(self, request):
-        qs = student_list_filtered_qs(request.POST).filter(is_archived=False)
+        qs = student_list_filtered_qs(request).filter(is_archived=False)
         n = qs.update(is_archived=True, updated_at=timezone.now())
         log_audit(
             request.user,
@@ -506,8 +564,13 @@ class StudentBulkArchiveFilteredView(LoginRequiredMixin, View):
 
 class StudentBulkArchiveGroupView(LoginRequiredMixin, View):
     def post(self, request, pk):
-        group = get_object_or_404(StudentGroup, pk=pk)
-        qs = Student.objects.filter(student_group_id=group.pk, is_archived=False)
+        ay = resolve_portal_academic_year_start(request)
+        group = get_object_or_404(StudentGroup, pk=pk, academic_year_start=ay)
+        qs = Student.objects.filter(
+            student_group_id=group.pk,
+            is_archived=False,
+            academic_year_start=ay,
+        )
         n = qs.update(is_archived=True, updated_at=timezone.now())
         log_audit(
             request.user,
@@ -531,11 +594,12 @@ class AttendanceListView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         today = date.today()
+        ay = resolve_portal_academic_year_start(self.request)
         month_year, month_num = _parse_month(self.request.GET.get("month"), today)
         selected_month = _month_value(month_year, month_num)
         group_id = (self.request.GET.get("student_group") or "").strip()
         selected_group = (
-            StudentGroup.objects.filter(pk=int(group_id)).first()
+            StudentGroup.objects.filter(pk=int(group_id), academic_year_start=ay).first()
             if group_id.isdigit()
             else None
         )
@@ -550,6 +614,7 @@ class AttendanceListView(LoginRequiredMixin, TemplateView):
             students = list(
                 Student.objects.filter(
                     student_group_id=selected_group.pk,
+                    academic_year_start=ay,
                     is_archived=False,
                     status=Student.Status.ACTIVE,
                 )
@@ -578,6 +643,7 @@ class AttendanceListView(LoginRequiredMixin, TemplateView):
             for row in (
                 AttendanceRecord.objects.filter(
                     student__student_group_id=selected_group.pk,
+                    student__academic_year_start=ay,
                     date__year=month_year,
                     date__month=month_num,
                 )
@@ -628,7 +694,9 @@ class AttendanceListView(LoginRequiredMixin, TemplateView):
 
         ctx.update(
             {
-                "student_groups": StudentGroup.objects.all().order_by("name"),
+                "student_groups": StudentGroup.objects.filter(
+                    academic_year_start=ay
+                ).order_by("name"),
                 "selected_student_group": str(selected_group.pk) if selected_group else group_id,
                 "selected_group": selected_group,
                 "filter_month": selected_month,
@@ -667,7 +735,11 @@ class AttendanceQuickMarkView(LoginRequiredMixin, View):
             messages.error(request, "Davamiyyət üçün qrup seçin.")
             return redirect("portal:attendance_list")
 
-        group = get_object_or_404(StudentGroup, pk=int(group_id))
+        group = get_object_or_404(
+            StudentGroup,
+            pk=int(group_id),
+            academic_year_start=resolve_portal_academic_year_start(request),
+        )
 
         try:
             student_id_raw, date_raw, status = raw_mark.split("|", 2)
@@ -688,6 +760,7 @@ class AttendanceQuickMarkView(LoginRequiredMixin, View):
             Student,
             pk=student_id,
             student_group_id=group.pk,
+            academic_year_start=group.academic_year_start,
             is_archived=False,
             status=Student.Status.ACTIVE,
         )
@@ -728,14 +801,17 @@ class AttendanceMarkView(LoginRequiredMixin, TemplateView):
             target_date,
         )
         group_id = (source.get("student_group") or "").strip()
+        ay = resolve_portal_academic_year_start(self.request)
         group = None
         if group_id.isdigit():
-            group = StudentGroup.objects.filter(pk=int(group_id)).first()
-        return group_id, group, target_date, _month_value(month_year, month_num)
+            group = StudentGroup.objects.filter(
+                pk=int(group_id), academic_year_start=ay
+            ).first()
+        return group_id, group, target_date, _month_value(month_year, month_num), ay
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        group_id, group, target_date, selected_month = self._selection()
+        group_id, group, target_date, selected_month, ay = self._selection()
         rows = []
         month_stats = []
         is_lesson_day = True
@@ -744,6 +820,7 @@ class AttendanceMarkView(LoginRequiredMixin, TemplateView):
             students = list(
                 Student.objects.filter(
                     student_group_id=group.pk,
+                    academic_year_start=ay,
                     is_archived=False,
                     status=Student.Status.ACTIVE,
                 )
@@ -772,6 +849,7 @@ class AttendanceMarkView(LoginRequiredMixin, TemplateView):
             for row in (
                 AttendanceRecord.objects.filter(
                     student__student_group_id=group.pk,
+                    student__academic_year_start=ay,
                     date__year=month_year,
                     date__month=month_num,
                 )
@@ -785,7 +863,9 @@ class AttendanceMarkView(LoginRequiredMixin, TemplateView):
 
         ctx.update(
             {
-                "student_groups": StudentGroup.objects.all().order_by("name"),
+                "student_groups": StudentGroup.objects.filter(
+                    academic_year_start=ay
+                ).order_by("name"),
                 "selected_student_group": str(group.pk) if group else group_id,
                 "selected_group": group,
                 "filter_date": target_date.isoformat(),
@@ -799,7 +879,7 @@ class AttendanceMarkView(LoginRequiredMixin, TemplateView):
         return ctx
 
     def post(self, request):
-        group_id, group, target_date, selected_month = self._selection()
+        group_id, group, target_date, selected_month, ay = self._selection()
         if not group:
             messages.error(request, "Davamiyyət üçün qrup seçin.")
             return redirect("portal:attendance_add")
@@ -807,6 +887,7 @@ class AttendanceMarkView(LoginRequiredMixin, TemplateView):
         students = list(
             Student.objects.filter(
                 student_group_id=group.pk,
+                academic_year_start=ay,
                 is_archived=False,
                 status=Student.Status.ACTIVE,
             )
@@ -878,6 +959,7 @@ class PaymentYearGridView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         td = date.today()
+        ay = resolve_portal_academic_year_start(self.request)
         raw_y = self.request.GET.get("year", str(td.year))
         try:
             year = int(raw_y)
@@ -887,15 +969,19 @@ class PaymentYearGridView(LoginRequiredMixin, TemplateView):
         selected_group = None
         raw_group = self.request.GET.get("student_group", "")
         if raw_group and raw_group.isdigit():
-            selected_group = StudentGroup.objects.filter(pk=int(raw_group)).first()
+            selected_group = StudentGroup.objects.filter(
+                pk=int(raw_group), academic_year_start=ay
+            ).first()
             if selected_group:
                 selected_student_group = str(selected_group.pk)
-        students = Student.objects.filter(is_archived=False).select_related(
-            "student_group"
-        ).order_by("last_name", "first_name")
+        students = Student.objects.filter(
+            is_archived=False, academic_year_start=ay
+        ).select_related("student_group").order_by("last_name", "first_name")
         if selected_group:
             students = students.filter(student_group=selected_group)
-        pay_qs = MonthlyPayment.objects.filter(year=year).select_related(
+        pay_qs = MonthlyPayment.objects.filter(
+            year=year, student__academic_year_start=ay
+        ).select_related(
             "student", "student__student_group"
         )
         if selected_group:
@@ -918,6 +1004,7 @@ class PaymentYearGridView(LoginRequiredMixin, TemplateView):
                 }
             )
         prev_y, next_y = year - 1, year + 1
+        portal_ay_qs = f"&ay={ay}"
         ctx.update(
             {
                 "grid_year": year,
@@ -925,7 +1012,9 @@ class PaymentYearGridView(LoginRequiredMixin, TemplateView):
                 "next_year": next_y,
                 "selected_student_group": selected_student_group,
                 "selected_group": selected_group,
-                "student_groups": StudentGroup.objects.all(),
+                "student_groups": StudentGroup.objects.filter(
+                    academic_year_start=ay
+                ).order_by("name"),
                 "payment_scope_label": selected_group.name if selected_group else "Ümumi",
                 "student_count": len(rows),
                 "group_query_suffix": (
@@ -933,6 +1022,7 @@ class PaymentYearGridView(LoginRequiredMixin, TemplateView):
                     if selected_student_group
                     else ""
                 ),
+                "portal_ay_qs": portal_ay_qs,
                 "student_rows": rows,
                 "months_row": [
                     {"n": n, "label": AZ_MONTH_SHORT[n]}
@@ -948,8 +1038,11 @@ class PaymentSetStatusView(LoginRequiredMixin, View):
     def post(self, request):
         def grid_redirect_url(target_year):
             group_id = request.POST.get("student_group", "").strip()
-            suffix = f"&student_group={group_id}" if group_id.isdigit() else ""
-            return reverse("portal:payment_grid") + f"?year={target_year}{suffix}"
+            ayv = resolve_portal_academic_year_start(request)
+            parts = [f"year={target_year}", f"ay={ayv}"]
+            if group_id.isdigit():
+                parts.append(f"student_group={group_id}")
+            return reverse("portal:payment_grid") + "?" + "&".join(parts)
 
         try:
             student_id = int(request.POST.get("student_id", ""))
@@ -968,8 +1061,11 @@ class PaymentSetStatusView(LoginRequiredMixin, View):
             messages.error(request, "Yanlış ay və ya status.")
             return redirect(grid_redirect_url(year))
 
+        portal_ay = resolve_portal_academic_year_start(request)
         student = get_object_or_404(
-            Student.objects.select_related("student_group"), pk=student_id
+            Student.objects.select_related("student_group"),
+            pk=student_id,
+            academic_year_start=portal_ay,
         )
         amount = student.effective_monthly_fee()
 
@@ -1020,7 +1116,9 @@ class PaymentSetStatusView(LoginRequiredMixin, View):
         m_scope, y_scope = m_all, y_all
         group_id = request.POST.get("student_group", "").strip()
         if group_id.isdigit():
-            scope_group = StudentGroup.objects.filter(pk=int(group_id)).first()
+            scope_group = StudentGroup.objects.filter(
+                pk=int(group_id), academic_year_start=portal_ay
+            ).first()
             if scope_group:
                 scope_label = f"«{scope_group.name}» qrupu"
                 m_scope = (
@@ -1029,6 +1127,7 @@ class PaymentSetStatusView(LoginRequiredMixin, View):
                         month=month,
                         status=MonthlyPayment.Status.PAID,
                         student__student_group=scope_group,
+                        student__academic_year_start=portal_ay,
                     ).aggregate(t=Sum("amount"))["t"]
                     or Decimal("0")
                 )
@@ -1037,6 +1136,7 @@ class PaymentSetStatusView(LoginRequiredMixin, View):
                         year=year,
                         status=MonthlyPayment.Status.PAID,
                         student__student_group=scope_group,
+                        student__academic_year_start=portal_ay,
                     ).aggregate(t=Sum("amount"))["t"]
                     or Decimal("0")
                 )
@@ -1119,6 +1219,7 @@ class PaymentCreateView(LoginRequiredMixin, CreateView):
     def get_form_kwargs(self):
         kw = super().get_form_kwargs()
         kw["user"] = self.request.user
+        kw["academic_year_start"] = resolve_portal_academic_year_start(self.request)
         return kw
 
     def form_valid(self, form):
@@ -1147,6 +1248,7 @@ class PaymentUpdateView(LoginRequiredMixin, UpdateView):
     def get_form_kwargs(self):
         kw = super().get_form_kwargs()
         kw["user"] = self.request.user
+        kw["academic_year_start"] = resolve_portal_academic_year_start(self.request)
         return kw
 
     def form_valid(self, form):
@@ -1167,13 +1269,17 @@ class PaymentUpdateView(LoginRequiredMixin, UpdateView):
 
 class ExportStudentsXlsxView(LoginRequiredMixin, View):
     def get(self, request):
+        ay = resolve_portal_academic_year_start(request)
         wb = Workbook()
         ws = wb.active
         ws.title = "Telebeler"
         ws.append(
             ["ID", "Ad", "Soyad", "Ata adı", "Telefon", "Valideyn", "Qrup mətni", "Qrup", "Aylıq", "Qeydiyyat", "Status", "Arxiv"]
         )
-        for s in Student.objects.filter(is_archived=False).select_related("student_group"):
+        for s in (
+            Student.objects.filter(is_archived=False, academic_year_start=ay)
+            .select_related("student_group")
+        ):
             ws.append(
                 [
                     s.id,
@@ -1202,13 +1308,14 @@ class ExportStudentsXlsxView(LoginRequiredMixin, View):
 
 class ExportStudentsPdfView(LoginRequiredMixin, View):
     def get(self, request):
+        ay = resolve_portal_academic_year_start(request)
         response = HttpResponse(content_type="application/pdf")
         response["Content-Disposition"] = (
             f'attachment; filename="students_{timezone.now().date()}.pdf"'
         )
         doc = SimpleDocTemplate(response, pagesize=A4)
         data = [["Ad", "Soyad", "Qrup", "Telefon", "Status"]]
-        for s in Student.objects.filter(is_archived=False)[:200]:
+        for s in Student.objects.filter(is_archived=False, academic_year_start=ay)[:200]:
             data.append(
                 [
                     s.first_name,
@@ -1275,3 +1382,230 @@ class ExportPaymentsXlsxView(LoginRequiredMixin, View):
         )
         wb.save(response)
         return response
+
+
+def _monthly_exam_grid_redirect(request, group_pk: str):
+    ay = resolve_portal_academic_year_start(request)
+    return redirect(
+        reverse("portal:monthly_exam_grid") + f"?student_group={group_pk}&ay={ay}"
+    )
+
+
+def _monthly_exam_student_rows(students, exams):
+    exam_ids = [e.pk for e in exams]
+    score_map = {}
+    if exam_ids:
+        for row in MonthlyExamScore.objects.filter(monthly_exam_id__in=exam_ids).values(
+            "student_id", "monthly_exam_id", "score_percent"
+        ):
+            score_map.setdefault(row["student_id"], {})[row["monthly_exam_id"]] = row[
+                "score_percent"
+            ]
+    out = []
+    for s in students:
+        cells = []
+        vals_for_avg = []
+        for ex in exams:
+            val = score_map.get(s.pk, {}).get(ex.pk)
+            if val is not None:
+                vals_for_avg.append(val)
+            cells.append({"exam": ex, "value": val})
+        if vals_for_avg:
+            tot = sum(Decimal(str(v)) for v in vals_for_avg)
+            avg = (tot / len(vals_for_avg)).quantize(Decimal("0.01"))
+        else:
+            avg = None
+        out.append({"student": s, "cells": cells, "average": avg})
+    return out
+
+
+class MonthlyExamGridView(LoginRequiredMixin, TemplateView):
+    template_name = "portal/monthly_exam_grid.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ay = resolve_portal_academic_year_start(self.request)
+        raw_group = (self.request.GET.get("student_group") or "").strip()
+        selected_group = None
+        if raw_group.isdigit():
+            selected_group = StudentGroup.objects.filter(
+                pk=int(raw_group), academic_year_start=ay
+            ).first()
+        exams = []
+        student_rows = []
+        if selected_group:
+            exams = list(
+                MonthlyExam.objects.filter(student_group=selected_group).order_by(
+                    "sort_order", "id"
+                )
+            )
+            students = list(
+                Student.objects.filter(
+                    student_group=selected_group,
+                    is_archived=False,
+                    academic_year_start=ay,
+                ).order_by("last_name", "first_name")
+            )
+            student_rows = _monthly_exam_student_rows(students, exams)
+        ctx.update(
+            {
+                "portal_academic_year": ay,
+                "student_groups": StudentGroup.objects.filter(academic_year_start=ay).order_by(
+                    "name"
+                ),
+                "selected_student_group": str(selected_group.pk) if selected_group else "",
+                "selected_group": selected_group,
+                "monthly_exams": exams,
+                "student_rows": student_rows,
+            }
+        )
+        return ctx
+
+
+class MonthlyExamScoreSaveView(LoginRequiredMixin, View):
+    """Bir tələbə üçün bütün sütunları saxlayır; boş xanalar nəticəni silir (ortalamadan çıxır)."""
+
+    def post(self, request):
+        raw_gid = (request.POST.get("student_group") or "").strip()
+        if not raw_gid.isdigit():
+            messages.error(request, "Qrup seçilməyib.")
+            return redirect(reverse("portal:monthly_exam_grid"))
+        group_pk = raw_gid
+        resolve_portal_academic_year_start(request)
+        ay = resolve_portal_academic_year_start(request)
+        group = get_object_or_404(
+            StudentGroup.objects.filter(academic_year_start=ay), pk=int(group_pk)
+        )
+        try:
+            student_id = int(request.POST.get("student_id", ""))
+        except (TypeError, ValueError):
+            messages.error(request, "Yanlış tələbə.")
+            return _monthly_exam_grid_redirect(request, group_pk)
+
+        student = Student.objects.filter(
+            pk=student_id,
+            student_group=group,
+            academic_year_start=ay,
+            is_archived=False,
+        ).first()
+        if not student:
+            messages.error(request, "Tələbə tapılmadı və ya bu qrupa aid deyil.")
+            return _monthly_exam_grid_redirect(request, group_pk)
+
+        exams = list(MonthlyExam.objects.filter(student_group=group).order_by("sort_order", "id"))
+        changed = 0
+        errors = []
+        audit_saved = {}
+        audit_cleared = []
+        for ex in exams:
+            key = f"score_{ex.pk}"
+            raw = (request.POST.get(key) or "").strip()
+            if raw == "":
+                deleted, _ = MonthlyExamScore.objects.filter(
+                    student=student, monthly_exam=ex
+                ).delete()
+                if deleted:
+                    audit_cleared.append(ex.pk)
+                changed += deleted
+                continue
+            try:
+                val = Decimal(raw.replace(",", "."))
+            except Exception:
+                errors.append(ex.title)
+                continue
+            if val < Decimal("0") or val > Decimal("100"):
+                errors.append(ex.title)
+                continue
+            try:
+                MonthlyExamScore.objects.update_or_create(
+                    student=student,
+                    monthly_exam=ex,
+                    defaults={"score_percent": val},
+                )
+            except DjangoValidationError as e:
+                msg = getattr(e, "message_dict", None) or getattr(e, "messages", [str(e)])
+                messages.error(request, str(msg))
+                return _monthly_exam_grid_redirect(request, group_pk)
+            audit_saved[str(ex.pk)] = str(val)
+            changed += 1
+
+        if audit_saved or audit_cleared:
+            log_audit(
+                request.user,
+                "bulk_save",
+                "MonthlyExamScore",
+                str(student.pk),
+                {"student": student.pk, "saved": audit_saved, "cleared_exam_ids": audit_cleared},
+            )
+
+        if errors:
+            messages.warning(
+                request,
+                "Bəzi sütunlar saxlanılmadı (0–100 arası rəqəm daxil edin): " + ", ".join(errors),
+            )
+        elif changed:
+            messages.success(request, f"«{student.full_name}» üçün nəticələr yeniləndi.")
+        else:
+            messages.info(request, "Dəyişiklik yoxdur.")
+        return _monthly_exam_grid_redirect(request, group_pk)
+
+
+class MonthlyExamAddView(LoginRequiredMixin, View):
+    def post(self, request):
+        raw_gid = (request.POST.get("student_group") or "").strip()
+        if not raw_gid.isdigit():
+            messages.error(request, "Əvvəl qrup seçin.")
+            return redirect(reverse("portal:monthly_exam_grid"))
+        group_pk = raw_gid
+        resolve_portal_academic_year_start(request)
+        ay = resolve_portal_academic_year_start(request)
+        group = get_object_or_404(
+            StudentGroup.objects.filter(academic_year_start=ay), pk=int(group_pk)
+        )
+        title = (request.POST.get("title") or "").strip()
+        if not title:
+            messages.error(request, "Sınağın adını daxil edin.")
+            return _monthly_exam_grid_redirect(request, group_pk)
+        last = MonthlyExam.objects.filter(student_group=group).aggregate(m=Max("sort_order"))["m"]
+        next_order = (last or 0) + 1
+        ex = MonthlyExam.objects.create(
+            student_group=group, title=title[:120], sort_order=next_order
+        )
+        log_audit(
+            request.user,
+            "create",
+            "MonthlyExam",
+            str(ex.pk),
+            {"student_group": group.pk, "title": title},
+        )
+        messages.success(request, f"«{title}» sütunu əlavə edildi.")
+        return _monthly_exam_grid_redirect(request, group_pk)
+
+
+class MonthlyExamDeleteView(LoginRequiredMixin, View):
+    def post(self, request):
+        raw_gid = (request.POST.get("student_group") or "").strip()
+        if not raw_gid.isdigit():
+            messages.error(request, "Qrup seçilməyib.")
+            return redirect(reverse("portal:monthly_exam_grid"))
+        group_pk = raw_gid
+        resolve_portal_academic_year_start(request)
+        ay = resolve_portal_academic_year_start(request)
+        group = get_object_or_404(
+            StudentGroup.objects.filter(academic_year_start=ay), pk=int(group_pk)
+        )
+        try:
+            exam_id = int(request.POST.get("exam_id", ""))
+        except (TypeError, ValueError):
+            messages.error(request, "Yanlış sınaq.")
+            return _monthly_exam_grid_redirect(request, group_pk)
+        ex = MonthlyExam.objects.filter(pk=exam_id, student_group=group).first()
+        if not ex:
+            messages.error(request, "Sınaq tapılmadı.")
+            return _monthly_exam_grid_redirect(request, group_pk)
+        title = ex.title
+        pk_del = str(ex.pk)
+        ex.delete()
+        log_audit(request.user, "delete", "MonthlyExam", pk_del, {"title": title})
+        messages.success(request, f"«{title}» sütunu silindi.")
+        return _monthly_exam_grid_redirect(request, group_pk)

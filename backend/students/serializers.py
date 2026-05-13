@@ -18,6 +18,7 @@ class StudentGroupSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "name",
+            "academic_year_start",
             "monthly_fee",
             "lesson_weekdays",
             "lesson_weekday_numbers",
@@ -38,6 +39,7 @@ class StudentSerializer(serializers.ModelSerializer):
             "phone",
             "parent_phone",
             "student_group",
+            "academic_year_start",
             "monthly_tuition",
             "class_group",
             "registration_date",
@@ -49,3 +51,22 @@ class StudentSerializer(serializers.ModelSerializer):
             "updated_at",
         )
         read_only_fields = ("id", "created_at", "updated_at", "full_name")
+        extra_kwargs = {
+            "academic_year_start": {"required": False},
+        }
+
+    def validate(self, attrs):
+        student_group = attrs.get("student_group")
+        if student_group is None and self.instance is not None:
+            student_group = self.instance.student_group
+        ay = attrs.get("academic_year_start")
+        if ay is None and self.instance is not None:
+            ay = self.instance.academic_year_start
+        if student_group is not None and ay is not None:
+            if student_group.academic_year_start != ay:
+                raise serializers.ValidationError(
+                    {
+                        "student_group": "Qrupun tədris ili tələbənin ili ilə uyğun olmalıdır.",
+                    }
+                )
+        return attrs
