@@ -34,6 +34,9 @@ deyishenlerini elave edin:
 
 - `DJANGO_SECRET_KEY`
 - `DJANGO_DEBUG=false`
+- **`DATABASE_URL`** — real istifade ucun **vacibdir** (PostgreSQL, məs. Neon və ya
+  Supabase). Təyin olunmayanda Vercel `/tmp/db.sqlite3` istifadə edir; deploy və
+  soyuq başlanğıcdan sonra məlumat itə bilər.
 - `DJANGO_SUPERUSER_USERNAME`
 - `DJANGO_SUPERUSER_PASSWORD`
 - `DJANGO_SUPERUSER_EMAIL`
@@ -42,10 +45,15 @@ Etrafli addimlar `DEPLOY.md` faylindadir.
 
 ## Database qeydi
 
-Xarici database teleb olunmur. Lokal muhitde `backend/db.sqlite3`, Vercel-de ise
-`/tmp/db.sqlite3` SQLite fayli istifade olunur. Vercel serverless storage daimi
-olmadigi ucun deploy ve cold start zamani melumatlar sifirlana biler; bu qurulus
-pulsuz/demo istifade ucundur.
+Lokal inkişaf üçün layihə `backend/db.sqlite3` (SQLite) ilə işləyir; bu faylı
+git-ə əlavə etməyin.
+
+**Vercel / production:** serverless mühitdə fayl sistemi daimi deyil. `DATABASE_URL`
+təyin edilmədikdə tətbiq avtomatik olaraq `/tmp` altında SQLite yaradır — həmin
+fayl deploy, cold start və ya instance dəyişəndə **silinə və ya boş ola bilər**.
+Davamlı məlumat üçün `DATABASE_URL` ilə idarə olunan PostgreSQL qoşun; paketlər
+artıq `dj-database-url` və `psycopg2-binary` ilə uyğundur. Ətraflı siyahı və
+addımlar üçün `DEPLOY.md`-ə baxın.
 
 ## Faydali URL-ler
 

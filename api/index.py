@@ -15,9 +15,11 @@ if str(BASE_DIR) not in sys.path:
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
+from config.settings import env_log_level
+
 logging.basicConfig(
-    level=os.environ.get("DJANGO_LOG_LEVEL", "INFO").upper(),
-    stream=sys.stdout,
+    level=logging._checkLevel(env_log_level()),
+    stream=sys.stderr,
     format="%(levelname)s %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
