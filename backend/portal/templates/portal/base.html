@@ -100,6 +100,11 @@
   </aside>
   <div class="workspace">
     <div class="workspace-inner">
+      {% if portal_db_ephemeral_warning %}
+      <div class="ephemeral-db-banner" role="status">
+        Verilənlər bazası müvəqqətidir — deploydan sonra məlumat silinə bilər. <strong>DATABASE_URL</strong> təyin edin (PostgreSQL: Neon, Supabase və s.).
+      </div>
+      {% endif %}
       {% if messages %}
       <ul class="messages">
         {% for message in messages %}

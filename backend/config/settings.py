@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import timedelta
 from pathlib import Path
@@ -26,6 +27,26 @@ def csv_env(name, default=""):
     ]
 
 
+def env_log_level(name="DJANGO_LOG_LEVEL", default="INFO"):
+    """Level string or int safe for dictConfig / basicConfig (avoids empty/invalid env)."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    text = str(raw).strip()
+    if not text:
+        return default
+    upper = text.upper()
+    if upper in logging._nameToLevel:
+        return upper
+    try:
+        n = int(text)
+    except ValueError:
+        return default
+    if n >= 0:
+        return n
+    return default
+
+
 VERCEL_URL = os.environ.get("VERCEL_URL", "").strip()
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-only-change-in-production")
@@ -34,14 +55,21 @@ DEBUG = env_bool("DJANGO_DEBUG", default=not IS_VERCEL)
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "formatters": {
+        "stderr": {
+            "format": "%(levelname)s %(name)s: %(message)s",
+        },
+    },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
+            "formatter": "stderr",
+            "stream": "ext://sys.stderr",
         },
     },
     "root": {
         "handlers": ["console"],
-        "level": os.environ.get("DJANGO_LOG_LEVEL", "INFO"),
+        "level": env_log_level(),
     },
     "loggers": {
         "django.request": {
@@ -105,6 +133,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "portal.context_processors.portal_academic_year",
+                "portal.context_processors.portal_database_notice",
             ],
         },
     },
@@ -128,6 +157,18 @@ else:
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+
+_db_name_norm = str(DATABASES["default"].get("NAME", "")).replace("\\", "/")
+PORTAL_EPHEMERAL_DATABASE = (IS_VERCEL and not os.environ.get("DATABASE_URL")) or (
+    DATABASES["default"].get("ENGINE") == "django.db.backends.sqlite3"
+    and ("/tmp/" in _db_name_norm or _db_name_norm.startswith("/tmp/"))
+)
+if PORTAL_EPHEMERAL_DATABASE:
+    logging.getLogger("config.settings").warning(
+        "Portal uses an ephemeral database (SQLite under /tmp on Vercel, or similar). "
+        "Data may be lost on deploy or cold start. Set DATABASE_URL to managed PostgreSQL "
+        "(e.g. Neon, Supabase) and run migrations."
+    )
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
