@@ -77,21 +77,21 @@
     {% endblock %}
     <div class="nav-section-label">Menyu</div>
     <nav>
-      <a class="nav-link{% nav_active request 'dashboard' %}" href="{% url 'portal:dashboard' %}"><span class="nav-ico">⌂</span> İdarə paneli</a>
-      <a class="nav-link{% nav_active request 'student_list' 'student_add' 'student_edit' 'student_detail' 'student_archive' 'student_bulk_archive' 'student_bulk_archive_filtered' 'student_bulk_archive_group' %}" href="{% url 'portal:student_list' %}"><span class="nav-ico">▤</span> Tələbələr</a>
-      <a class="nav-link{% nav_active request 'student_group_list' 'student_group_add' 'student_group_edit' 'student_group_delete' %}" href="{% url 'portal:student_group_list' %}"><span class="nav-ico">▦</span> Qruplar</a>
-      <a class="nav-link{% nav_active request 'attendance_list' 'attendance_add' %}" href="{% url 'portal:attendance_list' %}"><span class="nav-ico">◌</span> Davamiyyət</a>
-      <a class="nav-link{% nav_active request 'monthly_exam_grid' 'monthly_exam_save_score' 'monthly_exam_add' 'monthly_exam_delete' %}" href="{% url 'portal:monthly_exam_grid' %}"><span class="nav-ico">✎</span> Aylıq sınaqlar</a>
-      <a class="nav-link{% nav_active request 'payment_grid' 'payment_list' 'payment_add' 'payment_edit' 'payment_set_status' %}" href="{% url 'portal:payment_grid' %}"><span class="nav-ico">◈</span> Ödənişlər</a>
+      <a class="nav-link{% nav_active request 'dashboard' %}" href="{% url 'portal:dashboard' %}?{% query_transform request %}"><span class="nav-ico">⌂</span> İdarə paneli</a>
+      <a class="nav-link{% nav_active request 'student_list' 'student_add' 'student_edit' 'student_detail' 'student_archive' 'student_bulk_archive' 'student_bulk_archive_filtered' 'student_bulk_archive_group' %}" href="{% url 'portal:student_list' %}?{% query_transform request %}"><span class="nav-ico">▤</span> Tələbələr</a>
+      <a class="nav-link{% nav_active request 'student_group_list' 'student_group_add' 'student_group_edit' 'student_group_delete' %}" href="{% url 'portal:student_group_list' %}?{% query_transform request %}"><span class="nav-ico">▦</span> Qruplar</a>
+      <a class="nav-link{% nav_active request 'attendance_list' 'attendance_add' %}" href="{% url 'portal:attendance_list' %}?{% query_transform request %}"><span class="nav-ico">◌</span> Davamiyyət</a>
+      <a class="nav-link{% nav_active request 'monthly_exam_grid' 'monthly_exam_save_score' 'monthly_exam_add' 'monthly_exam_delete' %}" href="{% url 'portal:monthly_exam_grid' %}?{% query_transform request %}"><span class="nav-ico">✎</span> Aylıq sınaqlar</a>
+      <a class="nav-link{% nav_active request 'payment_grid' 'payment_list' 'payment_add' 'payment_edit' 'payment_set_status' %}" href="{% url 'portal:payment_grid' %}?{% query_transform request %}"><span class="nav-ico">◈</span> Ödənişlər</a>
     </nav>
     <div class="nav-section-label">Export</div>
     <nav>
-      <a class="nav-link" href="{% url 'portal:export_students_xlsx' %}"><span class="nav-ico">⬇</span> Tələbə .xlsx</a>
-      <a class="nav-link" href="{% url 'portal:export_students_pdf' %}"><span class="nav-ico">⬇</span> Tələbə .pdf</a>
-      <a class="nav-link" href="{% url 'portal:export_payments_xlsx' %}"><span class="nav-ico">⬇</span> Ödəniş .xlsx</a>
+      <a class="nav-link" href="{% url 'portal:export_students_xlsx' %}?{% query_transform request %}"><span class="nav-ico">⬇</span> Tələbə .xlsx</a>
+      <a class="nav-link" href="{% url 'portal:export_students_pdf' %}?{% query_transform request %}"><span class="nav-ico">⬇</span> Tələbə .pdf</a>
+      <a class="nav-link" href="{% url 'portal:export_payments_xlsx' %}?{% query_transform request %}"><span class="nav-ico">⬇</span> Ödəniş .xlsx</a>
     </nav>
     <div class="sidebar-footer">
-      <a class="user-chip user-chip-link{% nav_active request 'profile' 'password_change' %}" href="{% url 'portal:profile' %}">{{ user.username }}</a>
+      <a class="user-chip user-chip-link{% nav_active request 'profile' 'password_change' %}" href="{% url 'portal:profile' %}?{% query_transform request %}">{{ user.username }}</a>
       <form method="post" action="{% url 'portal:logout' %}" style="margin-top:0.5rem;">
         {% csrf_token %}
         <button type="submit" class="btn" style="width:100%;">Çıxış</button>

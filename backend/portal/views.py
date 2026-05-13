@@ -1,6 +1,7 @@
 import calendar
 from datetime import date
 from decimal import Decimal
+from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -187,17 +188,25 @@ def _month_value(year, month):
     return f"{year:04d}-{month:02d}"
 
 
-def _attendance_redirect(group_id, target_date, month_value):
-    return redirect(
-        reverse("portal:attendance_add")
-        + f"?student_group={group_id}&date={target_date.isoformat()}&month={month_value}"
+def _attendance_redirect(request, group_id, target_date, month_value):
+    ay = resolve_portal_academic_year_start(request)
+    q = urlencode(
+        {
+            "student_group": str(group_id),
+            "date": target_date.isoformat(),
+            "month": month_value,
+            "ay": str(ay),
+        }
     )
+    return redirect(reverse("portal:attendance_add") + f"?{q}")
 
 
-def _attendance_list_redirect(group_id, month_value):
-    return redirect(
-        reverse("portal:attendance_list") + f"?student_group={group_id}&month={month_value}"
+def _attendance_list_redirect(request, group_id, month_value):
+    ay = resolve_portal_academic_year_start(request)
+    q = urlencode(
+        {"student_group": str(group_id), "month": month_value, "ay": str(ay)}
     )
+    return redirect(reverse("portal:attendance_list") + f"?{q}")
 
 
 def _lesson_dates_for_month(group, year, month):
@@ -402,7 +411,8 @@ class StudentGroupDeleteView(LoginRequiredMixin, View):
         next_url = _safe_next_url(request)
         if next_url:
             return redirect(next_url)
-        return redirect("portal:student_group_list")
+        ay = resolve_portal_academic_year_start(request)
+        return redirect(reverse("portal:student_group_list") + f"?ay={ay}")
 
 
 class StudentListView(LoginRequiredMixin, ListView):
@@ -484,7 +494,8 @@ class StudentCreateView(LoginRequiredMixin, StudentFormGroupContextMixin, Create
         return resp
 
     def get_success_url(self):
-        return reverse("portal:student_detail", kwargs={"pk": self.object.pk})
+        ay = resolve_portal_academic_year_start(self.request)
+        return reverse("portal:student_detail", kwargs={"pk": self.object.pk}) + f"?ay={ay}"
 
 
 class StudentUpdateView(LoginRequiredMixin, StudentFormGroupContextMixin, UpdateView):
@@ -514,7 +525,8 @@ class StudentUpdateView(LoginRequiredMixin, StudentFormGroupContextMixin, Update
         return resp
 
     def get_success_url(self):
-        return reverse("portal:student_detail", kwargs={"pk": self.object.pk})
+        ay = resolve_portal_academic_year_start(self.request)
+        return reverse("portal:student_detail", kwargs={"pk": self.object.pk}) + f"?ay={ay}"
 
 
 class StudentDetailView(LoginRequiredMixin, DetailView):
@@ -543,7 +555,7 @@ class StudentArchiveView(LoginRequiredMixin, View):
         s.save(update_fields=["is_archived", "updated_at"])
         log_audit(request.user, "update", "Student", str(s.pk), {"is_archived": True})
         messages.info(request, "Arxivləndi.")
-        return redirect("portal:student_list")
+        return redirect(reverse("portal:student_list") + f"?ay={ay}")
 
 
 class StudentBulkArchiveView(LoginRequiredMixin, View):
@@ -558,7 +570,8 @@ class StudentBulkArchiveView(LoginRequiredMixin, View):
                 pks.append(int(xs))
         if not pks:
             messages.warning(request, "Heç bir tələbə seçilməyib.")
-            return redirect("portal:student_list")
+            ay = resolve_portal_academic_year_start(request)
+            return redirect(reverse("portal:student_list") + f"?ay={ay}")
 
         ay = resolve_portal_academic_year_start(request)
         qs = Student.objects.filter(
@@ -573,7 +586,7 @@ class StudentBulkArchiveView(LoginRequiredMixin, View):
             {"count": n, "pk_sample": [str(x) for x in pks[:40]]},
         )
         messages.info(request, f"{n} tələbə arxivə köçürüldü.")
-        return redirect("portal:student_list")
+        return redirect(reverse("portal:student_list") + f"?ay={ay}")
 
 
 class StudentBulkArchiveFilteredView(LoginRequiredMixin, View):
@@ -593,7 +606,8 @@ class StudentBulkArchiveFilteredView(LoginRequiredMixin, View):
             {"count": n},
         )
         messages.info(request, f"Sorğu üzrə {n} tələbə arxivə köçürüldü.")
-        return redirect("portal:student_list")
+        ay = resolve_portal_academic_year_start(request)
+        return redirect(reverse("portal:student_list") + f"?ay={ay}")
 
 
 class StudentBulkArchiveGroupView(LoginRequiredMixin, View):
@@ -619,7 +633,8 @@ class StudentBulkArchiveGroupView(LoginRequiredMixin, View):
         next_url = (request.POST.get("next") or "").strip()
         if next_url.startswith("/") and not next_url.startswith("//"):
             return redirect(next_url)
-        return redirect("portal:student_list")
+        ay = resolve_portal_academic_year_start(request)
+        return redirect(reverse("portal:student_list") + f"?ay={ay}")
 
 
 class AttendanceListView(LoginRequiredMixin, TemplateView):
@@ -767,7 +782,8 @@ class AttendanceQuickMarkView(LoginRequiredMixin, View):
 
         if not group_id.isdigit():
             messages.error(request, "Davamiyyət üçün qrup seçin.")
-            return redirect("portal:attendance_list")
+            ay = resolve_portal_academic_year_start(request)
+            return redirect(reverse("portal:attendance_list") + f"?ay={ay}")
 
         group = get_object_or_404(
             StudentGroup,
@@ -781,14 +797,14 @@ class AttendanceQuickMarkView(LoginRequiredMixin, View):
             target_date = date.fromisoformat(date_raw)
         except (TypeError, ValueError):
             messages.error(request, "Yanlış davamiyyət sorğusu.")
-            return _attendance_list_redirect(group.pk, selected_month)
+            return _attendance_list_redirect(request, group.pk, selected_month)
 
         month_year, month_num = _parse_month(request.POST.get("month"), target_date)
         selected_month = _month_value(month_year, month_num)
         allowed_statuses = {value for value, _label in ATTENDANCE_MARK_STATUSES}
         if status not in allowed_statuses:
             messages.error(request, "Yanlış davamiyyət statusu.")
-            return _attendance_list_redirect(group.pk, selected_month)
+            return _attendance_list_redirect(request, group.pk, selected_month)
 
         student = get_object_or_404(
             Student,
@@ -820,7 +836,7 @@ class AttendanceQuickMarkView(LoginRequiredMixin, View):
             request,
             f"{student.full_name} — {target_date.isoformat()}: {ATTENDANCE_STATUS_LABELS[status]}.",
         )
-        return _attendance_list_redirect(group.pk, selected_month)
+        return _attendance_list_redirect(request, group.pk, selected_month)
 
 
 class AttendanceMarkView(LoginRequiredMixin, TemplateView):
@@ -916,7 +932,8 @@ class AttendanceMarkView(LoginRequiredMixin, TemplateView):
         group_id, group, target_date, selected_month, ay = self._selection()
         if not group:
             messages.error(request, "Davamiyyət üçün qrup seçin.")
-            return redirect("portal:attendance_add")
+            ay = resolve_portal_academic_year_start(request)
+            return redirect(reverse("portal:attendance_add") + f"?ay={ay}")
 
         students = list(
             Student.objects.filter(
@@ -930,7 +947,7 @@ class AttendanceMarkView(LoginRequiredMixin, TemplateView):
         )
         if not students:
             messages.warning(request, f"«{group.name}» qrupunda aktiv tələbə yoxdur.")
-            return _attendance_redirect(group.pk, target_date, selected_month)
+            return _attendance_redirect(request, group.pk, target_date, selected_month)
 
         if not group.is_lesson_day(target_date):
             messages.warning(
@@ -981,9 +998,10 @@ class AttendanceMarkView(LoginRequiredMixin, TemplateView):
         )
         if skipped_count:
             messages.warning(request, f"{skipped_count} tələbə üçün status seçilməyib.")
+        ay = resolve_portal_academic_year_start(request)
         return redirect(
             reverse("portal:attendance_list")
-            + f"?student_group={group.pk}&month={selected_month}"
+            + f"?{urlencode({'student_group': str(group.pk), 'month': selected_month, 'ay': str(ay)})}"
         )
 
 
@@ -1269,9 +1287,11 @@ class PaymentCreateView(LoginRequiredMixin, CreateView):
         return resp
 
     def get_success_url(self):
-        return reverse(
-            "portal:payment_grid"
-        ) + f"?year={self.object.year}"
+        ay = resolve_portal_academic_year_start(self.request)
+        return (
+            reverse("portal:payment_grid")
+            + f"?{urlencode({'year': self.object.year, 'ay': ay})}"
+        )
 
 
 class PaymentUpdateView(LoginRequiredMixin, UpdateView):
@@ -1298,7 +1318,11 @@ class PaymentUpdateView(LoginRequiredMixin, UpdateView):
         return resp
 
     def get_success_url(self):
-        return reverse("portal:payment_grid") + f"?year={self.object.year}"
+        ay = resolve_portal_academic_year_start(self.request)
+        return (
+            reverse("portal:payment_grid")
+            + f"?{urlencode({'year': self.object.year, 'ay': ay})}"
+        )
 
 
 class ExportStudentsXlsxView(LoginRequiredMixin, View):
@@ -1376,6 +1400,7 @@ class ExportStudentsPdfView(LoginRequiredMixin, View):
 
 class ExportPaymentsXlsxView(LoginRequiredMixin, View):
     def get(self, request):
+        ay = resolve_portal_academic_year_start(request)
         wb = Workbook()
         ws = wb.active
         ws.title = "Odenisler"
@@ -1393,7 +1418,11 @@ class ExportPaymentsXlsxView(LoginRequiredMixin, View):
                 "Usul",
             ]
         )
-        for p in MonthlyPayment.objects.select_related("student").all()[:5000]:
+        for p in (
+            MonthlyPayment.objects.select_related("student")
+            .filter(student__academic_year_start=ay)
+            .order_by("-year", "-month", "-id")[:5000]
+        ):
             ws.append(
                 [
                     p.id,
@@ -1503,7 +1532,8 @@ class MonthlyExamScoreSaveView(LoginRequiredMixin, View):
         raw_gid = (request.POST.get("student_group") or "").strip()
         if not raw_gid.isdigit():
             messages.error(request, "Qrup seçilməyib.")
-            return redirect(reverse("portal:monthly_exam_grid"))
+            ay = resolve_portal_academic_year_start(request)
+            return redirect(reverse("portal:monthly_exam_grid") + f"?ay={ay}")
         group_pk = raw_gid
         resolve_portal_academic_year_start(request)
         ay = resolve_portal_academic_year_start(request)
@@ -1589,7 +1619,8 @@ class MonthlyExamAddView(LoginRequiredMixin, View):
         raw_gid = (request.POST.get("student_group") or "").strip()
         if not raw_gid.isdigit():
             messages.error(request, "Əvvəl qrup seçin.")
-            return redirect(reverse("portal:monthly_exam_grid"))
+            ay = resolve_portal_academic_year_start(request)
+            return redirect(reverse("portal:monthly_exam_grid") + f"?ay={ay}")
         group_pk = raw_gid
         resolve_portal_academic_year_start(request)
         ay = resolve_portal_academic_year_start(request)
@@ -1621,7 +1652,8 @@ class MonthlyExamDeleteView(LoginRequiredMixin, View):
         raw_gid = (request.POST.get("student_group") or "").strip()
         if not raw_gid.isdigit():
             messages.error(request, "Qrup seçilməyib.")
-            return redirect(reverse("portal:monthly_exam_grid"))
+            ay = resolve_portal_academic_year_start(request)
+            return redirect(reverse("portal:monthly_exam_grid") + f"?ay={ay}")
         group_pk = raw_gid
         resolve_portal_academic_year_start(request)
         ay = resolve_portal_academic_year_start(request)

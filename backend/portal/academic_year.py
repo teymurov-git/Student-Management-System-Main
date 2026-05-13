@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 SESSION_KEY = "portal_academic_year_start"
+COOKIE_NAME = "portal_ay"
 YEAR_MIN = 2000
 YEAR_MAX = 2100
 
 
 def resolve_portal_academic_year_start(request) -> int:
-    """GET/POST ``ay`` ilə sessiyanı yeniləyir; yoxdursa sessiya və ya cari tədris ili."""
+    """GET/POST ``ay`` ilə sessiyanı yeniləyir; yoxdursa sessiya, ``portal_ay`` cookie və ya cari tədris ili."""
     from portal.services.income import current_academic_year_start
 
     default_y = current_academic_year_start().year
@@ -29,6 +30,13 @@ def resolve_portal_academic_year_start(request) -> int:
     if isinstance(stored, str) and stored.strip().isdigit():
         y = int(stored.strip())
         if YEAR_MIN <= y <= YEAR_MAX:
+            return y
+
+    ck = (request.COOKIES.get(COOKIE_NAME) or "").strip()
+    if ck.isdigit():
+        y = int(ck)
+        if YEAR_MIN <= y <= YEAR_MAX:
+            request.session[SESSION_KEY] = y
             return y
 
     request.session[SESSION_KEY] = default_y

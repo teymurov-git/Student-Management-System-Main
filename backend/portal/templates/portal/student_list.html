@@ -11,8 +11,8 @@
     <p class="lead">Qeydiyyat, qrup əlavəsi, filter və qrup üzrə axtarış.</p>
   </div>
   <div class="page-actions">
-    <a class="btn btn-ghost" href="{% url 'portal:student_group_list' %}">Qruplar</a>
-    <a class="btn btn-primary" href="{% url 'portal:student_add' %}">+ Yeni tələbə</a>
+    <a class="btn btn-ghost" href="{% url 'portal:student_group_list' %}?{% query_transform request %}">Qruplar</a>
+    <a class="btn btn-primary" href="{% url 'portal:student_add' %}?{% query_transform request %}">+ Yeni tələbə</a>
   </div>
 </div>
 
@@ -49,7 +49,7 @@
     <div class="toolbar" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;padding:0.35rem 0;border-bottom:1px solid var(--hairline,var(--border));">
       <span style="font-size:0.9rem;"><strong>{{ g.name }}</strong> · {{ g.monthly_fee|floatformat:0 }} ₼ · {{ g.lesson_weekday_label_text|default:"Bütün günlər" }}</span>
       <div class="toolbar" style="flex-wrap:nowrap;gap:0.5rem;margin:0;">
-        <a class="btn btn-ghost btn-sm" href="{% url 'portal:student_group_edit' g.pk %}">Redaktə</a>
+        <a class="btn btn-ghost btn-sm" href="{% url 'portal:student_group_edit' g.pk %}?{% query_transform request %}">Redaktə</a>
         <form method="post" action="{% url 'portal:student_group_delete' g.pk %}" style="display:inline;margin:0;" onsubmit="return confirm('«{{ g.name|escapejs }}» qrupunu silmək istədiyinizə əminsiniz? Bu qrupa bağlı tələbələrin «Qrup» seçimi sıfırlanacaq.');">
           {% csrf_token %}
           <input type="hidden" name="next" value="{{ request.get_full_path }}">
@@ -129,7 +129,7 @@
           <input type="checkbox" form="bulk-student-archive" name="ids" value="{{ s.pk }}" class="bulk-student-cb" aria-label="{{ s.full_name }}">
           {% else %}—{% endif %}
         </td>
-        <td><a href="{% url 'portal:student_detail' s.pk %}"><strong>{{ s.full_name }}</strong></a></td>
+        <td><a href="{% url 'portal:student_detail' s.pk %}?{% query_transform request %}"><strong>{{ s.full_name }}</strong></a></td>
         <td style="font-family:var(--mono);font-size:0.82rem;">{{ s.phone }}</td>
         <td><span class="badge badge-muted">{{ s.class_group }}</span></td>
         <td>
@@ -145,7 +145,7 @@
           </form>
           <span class="table-actions-sep" aria-hidden="true">·</span>
           {% endif %}
-          <a href="{% url 'portal:student_edit' s.pk %}">Redaktə</a><a href="{% url 'portal:student_detail' s.pk %}">Profil</a>
+          <a href="{% url 'portal:student_edit' s.pk %}?{% query_transform request %}">Redaktə</a><a href="{% url 'portal:student_detail' s.pk %}?{% query_transform request %}">Profil</a>
         </td>
       </tr>
       {% empty %}

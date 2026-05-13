@@ -1,4 +1,5 @@
 {% extends "portal/base.html" %}
+{% load portal_tags %}
 {% block title %}Davamiyyət qeydi{% endblock %}
 {% block content %}
 <div class="page-header">
@@ -6,7 +7,7 @@
     <h1>Qrup üzrə davamiyyət</h1>
     <p class="lead">Qrup və tarix seçin, sonra hər tələbə üçün statusu saxlayın.</p>
   </div>
-  <div class="page-actions"><a class="btn btn-ghost" href="{% url 'portal:attendance_list' %}">Ləğv</a></div>
+  <div class="page-actions"><a class="btn btn-ghost" href="{% url 'portal:attendance_list' %}?{% query_transform request %}">Ləğv</a></div>
 </div>
 
 <form method="get" class="card toolbar">

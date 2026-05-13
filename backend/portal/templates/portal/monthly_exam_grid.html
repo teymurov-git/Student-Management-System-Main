@@ -73,7 +73,7 @@
               <input type="hidden" name="student_group" value="{{ selected_student_group }}">
               <input type="hidden" name="student_id" value="{{ row.student.pk }}">
             </form>
-            <a href="{% url 'portal:student_detail' row.student.pk %}">{{ row.student.full_name }}</a>
+            <a href="{% url 'portal:student_detail' row.student.pk %}?ay={{ portal_academic_year }}">{{ row.student.full_name }}</a>
           </td>
           {% for cell in row.cells %}
           <td>

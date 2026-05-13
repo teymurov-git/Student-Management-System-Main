@@ -1,4 +1,5 @@
 {% extends "portal/base.html" %}
+{% load portal_tags %}
 {% block title %}İllik ödəniş şəbəkəsi{% endblock %}
 {% block content %}
 <div class="page-header">
@@ -9,7 +10,7 @@
     </p>
     <p class="lead">
       {{ payment_scope_label }} {{ grid_year }} (yalnız «Ödənib»): <strong style="color:var(--text);">{{ year_total_paid|floatformat:2 }} ₼</strong>.
-      Köhnə sıra üçün <a href="{% url 'portal:payment_list' %}">cədvəl siyahısı</a>.
+      Köhnə sıra üçün <a href="{% url 'portal:payment_list' %}?{% query_transform request %}">cədvəl siyahısı</a>.
     </p>
   </div>
   <div class="page-actions toolbar pay-year-toolbar">
@@ -61,7 +62,7 @@
       <tbody>
         {% for row in student_rows %}
         <tr>
-          <td class="sticky-col pay-grid-name"><a href="{% url 'portal:student_detail' row.student.pk %}">{{ row.student.full_name }}</a></td>
+          <td class="sticky-col pay-grid-name"><a href="{% url 'portal:student_detail' row.student.pk %}?{% query_transform request %}">{{ row.student.full_name }}</a></td>
           {% for cell in row.cells %}
           <td class="pay-cell {% if cell.payment %}{% if cell.payment.status == 'paid' %}is-paid{% elif cell.payment.status == 'late' %}is-late{% else %}is-unpaid{% endif %}{% else %}is-empty{% endif %}">
             <form method="post" action="{% url 'portal:payment_set_status' %}" class="pay-cell-actions">

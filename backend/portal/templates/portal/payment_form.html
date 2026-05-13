@@ -1,4 +1,5 @@
 {% extends "portal/base.html" %}
+{% load portal_tags %}
 {% block title %}Ödəniş{% endblock %}
 {% block content %}
 <div class="page-header">
@@ -6,7 +7,7 @@
     <h1>{% if object %}Ödənişi yenilə{% else %}Yeni ödəniş qeydi{% endif %}</h1>
     <p class="lead">Ay və il təkrarlanmamalıdır (eyni tələbə üçün).</p>
   </div>
-  <div class="page-actions"><a class="btn btn-ghost" href="{% if object %}{% url 'portal:payment_grid' %}?year={{ object.year }}{% else %}{% url 'portal:payment_grid' %}{% endif %}">Ləğv</a></div>
+  <div class="page-actions"><a class="btn btn-ghost" href="{% if object %}{% url 'portal:payment_grid' %}?{% query_transform request year=object.year %}{% else %}{% url 'portal:payment_grid' %}?{% query_transform request %}{% endif %}">Ləğv</a></div>
 </div>
 <form method="post" class="card" style="max-width:36rem;">
   {% csrf_token %}

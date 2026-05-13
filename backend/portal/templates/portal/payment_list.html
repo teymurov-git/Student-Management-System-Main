@@ -6,11 +6,11 @@
   <div>
     <h1>Ödəniş qeydləri — siyahı</h1>
     <p class="lead">
-      Əsas görünüş: <a href="{% url 'portal:payment_grid' %}?year={{ filter_year }}">İllik şəbəkə</a>.
+      Əsas görünüş: <a href="{% url 'portal:payment_grid' %}?{% query_transform request year=filter_year %}">İllik şəbəkə</a>.
       Bu səhifə köhnə filtrlər və dəqiq düzəliş üçündür. Seçilmiş ay üçün gəlir: <strong style="color:var(--text);">{{ month_revenue|floatformat:2 }} ₼</strong> (yalnız «Ödənib»).</p>
   </div>
   <div class="page-actions">
-    <a class="btn btn-primary" href="{% url 'portal:payment_add' %}">+ Ödəniş qeydi</a>
+    <a class="btn btn-primary" href="{% url 'portal:payment_add' %}?{% query_transform request %}">+ Ödəniş qeydi</a>
   </div>
 </div>
 
@@ -18,7 +18,7 @@
   <div class="field"><label>İl</label><input class="field-control" type="number" name="year" value="{{ filter_year }}"></div>
   <div class="field"><label>Ay</label><input class="field-control" type="number" name="month" min="1" max="12" value="{{ filter_month }}"></div>
   <div class="field field-grow"><label>Axtarış</label><input class="field-control" type="search" name="q" value="{{ request.GET.q }}" placeholder="Tələbə adı…"></div>
-  <input type="hidden" name="mode" value="{{ mode }}">
+  <input type="hidden" name="ay" value="{{ portal_academic_year_start }}">
   <div class="field" style="align-self:flex-end;"><button type="submit" class="btn btn-primary">Göstər</button></div>
 </form>
 
@@ -42,7 +42,7 @@
           {% else %}<span class="badge badge-bad">{{ p.get_status_display }}</span>{% endif %}
         </td>
         <td style="font-family:var(--mono);font-size:0.82rem;">{{ p.remaining_debt }}</td>
-        <td class="table-actions"><a href="{% url 'portal:payment_edit' p.pk %}">Redaktə</a></td>
+        <td class="table-actions"><a href="{% url 'portal:payment_edit' p.pk %}?{% query_transform request %}">Redaktə</a></td>
       </tr>
       {% empty %}
       <tr><td colspan="6"><div class="empty-state"><strong>Qeyd yoxdur</strong>Bu filtrə uyğun ödəniş tapılmadı.</div></td></tr>

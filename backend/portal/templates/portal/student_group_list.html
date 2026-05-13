@@ -20,8 +20,8 @@
     <p class="lead">Tələbə qruplarını, aylıq məbləği və həftəlik dərs günlərini idarə edin.</p>
   </div>
   <div class="page-actions">
-    <a class="btn btn-ghost" href="{% url 'portal:student_list' %}">Tələbələr</a>
-    <a class="btn btn-primary" href="{% url 'portal:student_group_add' %}">+ Yeni qrup</a>
+    <a class="btn btn-ghost" href="{% url 'portal:student_list' %}?{% query_transform request %}">Tələbələr</a>
+    <a class="btn btn-primary" href="{% url 'portal:student_group_add' %}?{% query_transform request %}">+ Yeni qrup</a>
   </div>
 </div>
 
@@ -44,7 +44,7 @@
         <td>{{ group.lesson_weekday_label_text|default:"Bütün günlər" }}</td>
         <td>{{ group.student_count }}</td>
         <td class="table-actions">
-          <a href="{% url 'portal:student_group_edit' group.pk %}">Redaktə</a>
+          <a href="{% url 'portal:student_group_edit' group.pk %}?{% query_transform request %}">Redaktə</a>
           <form method="post" action="{% url 'portal:student_group_delete' group.pk %}" style="display:inline;margin:0;padding:0;border:0;" onsubmit="return confirm('«{{ group.name|escapejs }}» qrupunu silmək istədiyinizə əminsiniz? Bu qrupa bağlı tələbələrin qrup seçimi təmizlənəcək.');">
             {% csrf_token %}
             <button type="submit" class="btn-link danger" style="font-size:inherit;">Sil</button>

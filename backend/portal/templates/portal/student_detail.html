@@ -1,7 +1,8 @@
 {% extends "portal/base.html" %}
+{% load portal_tags %}
 {% block title %}{{ student.full_name }}{% endblock %}
 {% block content %}
-<a class="back-link" href="{% url 'portal:student_list' %}">← Tələbə siyahısı</a>
+<a class="back-link" href="{% url 'portal:student_list' %}?{% query_transform request %}">← Tələbə siyahısı</a>
 <div class="page-header">
   <div>
     <h1>{{ student.full_name }}</h1>
@@ -17,10 +18,11 @@
     </p>
   </div>
   <div class="page-actions">
-    <a class="btn btn-primary" href="{% url 'portal:student_edit' student.pk %}">Redaktə</a>
+    <a class="btn btn-primary" href="{% url 'portal:student_edit' student.pk %}?{% query_transform request %}">Redaktə</a>
     {% if not student.is_archived %}
     <form method="post" action="{% url 'portal:student_archive' student.pk %}" style="display:inline;" onsubmit="return confirm('Arxivlənsin?');">
       {% csrf_token %}
+      {% if portal_academic_year_start %}<input type="hidden" name="ay" value="{{ portal_academic_year_start }}">{% endif %}
       <button type="submit" class="btn btn-danger btn-sm">Arxivlə</button>
     </form>
     {% endif %}
@@ -63,6 +65,6 @@
 </div>
 
 <p style="margin-top:1rem;">
-  <a class="btn btn-ghost btn-sm" href="{% url 'portal:payment_grid' %}">İllik ödəniş cədvəli</a>
+  <a class="btn btn-ghost btn-sm" href="{% url 'portal:payment_grid' %}?{% query_transform request %}">İllik ödəniş cədvəli</a>
 </p>
 {% endblock %}

@@ -86,6 +86,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "portal.middleware.PortalAcademicYearCookieMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -211,3 +212,18 @@ if VERCEL_URL:
         CSRF_TRUSTED_ORIGINS.append(vercel_origin)
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Sessiya: portal tədris ili və login vəziyyəti burada saxlanır.
+# Vercel-də **davamlı** DB üçün ``DATABASE_URL`` təyin edin; ``/tmp`` SQLite
+# həm verilənləri, həm də sessiyanı soyuq başlanğıcda itirə bilər.
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
+SESSION_COOKIE_AGE = int(
+    os.environ.get("DJANGO_SESSION_COOKIE_AGE", str(60 * 60 * 24 * 60))
+)  # default 60 gün
+SESSION_SAVE_EVERY_REQUEST = env_bool("DJANGO_SESSION_SAVE_EVERY_REQUEST", True)
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SECURE = env_bool(
+    "DJANGO_SESSION_COOKIE_SECURE",
+    default=not DEBUG,
+)

@@ -1,4 +1,5 @@
 {% extends "portal/base.html" %}
+{% load portal_tags %}
 {% block title %}{% if object %}Redaktə{% else %}Yeni tələbə{% endif %}{% endblock %}
 {% block content %}
 <div class="page-header">
@@ -7,8 +8,8 @@
     <p class="lead">Bütün məcburi sahələri doldurun.</p>
   </div>
   <div class="page-actions">
-    <a class="btn btn-ghost" href="{% url 'portal:student_group_list' %}">Qruplar</a>
-    <a class="btn btn-ghost" href="{% if object %}{% url 'portal:student_detail' object.pk %}{% else %}{% url 'portal:student_list' %}{% endif %}">Ləğv</a>
+    <a class="btn btn-ghost" href="{% url 'portal:student_group_list' %}?{% query_transform request %}">Qruplar</a>
+    <a class="btn btn-ghost" href="{% if object %}{% url 'portal:student_detail' object.pk %}?{% query_transform request %}{% else %}{% url 'portal:student_list' %}?{% query_transform request %}{% endif %}">Ləğv</a>
   </div>
 </div>
 
@@ -66,4 +67,67 @@
     <button type="submit" class="btn btn-primary">Saxla</button>
   </p>
 </form>
+<script>
+(function () {
+  var form = document.querySelector("form.student-form-card");
+  if (!form) return;
+  var KEY = "sms_draft:student:" + location.pathname;
+  function fieldValue(el) {
+    if (el.type === "checkbox") return el.checked;
+    if (el.type === "radio") return el.checked ? el.value : undefined;
+    return el.value;
+  }
+  function save() {
+    try {
+      var data = {};
+      var els = form.querySelectorAll("input[name], select[name], textarea[name]");
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        if (!el.name || el.name === "csrfmiddlewaretoken" || el.type === "submit" || el.type === "button") continue;
+        if (el.type === "radio") {
+          if (el.checked) data[el.name] = el.value;
+          continue;
+        }
+        data[el.name] = fieldValue(el);
+      }
+      localStorage.setItem(KEY, JSON.stringify({ savedAt: Date.now(), data: data }));
+    } catch (e) {}
+  }
+  var timer;
+  function scheduleSave() {
+    clearTimeout(timer);
+    timer = setTimeout(save, 700);
+  }
+  form.addEventListener("input", scheduleSave);
+  form.addEventListener("change", scheduleSave);
+  form.addEventListener("submit", function () {
+    try { localStorage.removeItem(KEY); } catch (e) {}
+  });
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (!raw) return;
+    var pack = JSON.parse(raw);
+    if (!pack || !pack.data) return;
+    if (confirm("Yadda saxlanmış yarımçıq form var. Sahələri bərpa edək?")) {
+      var d = pack.data;
+      Object.keys(d).forEach(function (name) {
+        var el = form.elements[name];
+        if (!el) return;
+        var val = d[name];
+        if (el.length && el[0] && el[0].type === "radio") {
+          for (var j = 0; j < el.length; j++) {
+            if (el[j].type === "radio" && el[j].value === String(val)) el[j].checked = true;
+          }
+          return;
+        }
+        if (el.type === "checkbox") {
+          el.checked = !!val;
+          return;
+        }
+        el.value = val != null ? String(val) : "";
+      });
+    }
+  } catch (e) {}
+})();
+</script>
 {% endblock %}

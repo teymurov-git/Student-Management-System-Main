@@ -1,4 +1,5 @@
 {% extends "portal/base.html" %}
+{% load portal_tags %}
 {% block title %}{% if object %}Qrupu redaktə et{% else %}Yeni qrup{% endif %}{% endblock %}
 {% block sidebar_academic_year %}{% endblock %}
 {% block content %}
@@ -8,7 +9,7 @@
     <p class="lead">Bu qrup tələbə formalarında seçim kimi görünəcək və davamiyyət cədvəlində dərs günlərini yaradacaq.</p>
   </div>
   <div class="page-actions">
-    <a class="btn btn-ghost" href="{% url 'portal:student_group_list' %}">Ləğv</a>
+    <a class="btn btn-ghost" href="{% url 'portal:student_group_list' %}?{% query_transform request %}">Ləğv</a>
   </div>
 </div>
 
@@ -16,4 +17,60 @@
   {% csrf_token %}
   {% include "portal/partials/group_form_fields.html" with group_form=form submit_label="Saxla" submit_button_class="btn-primary" %}
 </form>
+<script>
+(function () {
+  var form = document.querySelector("form.group-form--page");
+  if (!form) return;
+  var KEY = "sms_draft:group:" + location.pathname;
+  function save() {
+    try {
+      var data = {};
+      var els = form.querySelectorAll("input[name], select[name], textarea[name]");
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        if (!el.name || el.name === "csrfmiddlewaretoken" || el.type === "submit" || el.type === "button") continue;
+        if (el.type === "checkbox") data[el.name] = el.checked;
+        else if (el.type !== "radio") data[el.name] = el.value;
+        else if (el.checked) data[el.name] = el.value;
+      }
+      localStorage.setItem(KEY, JSON.stringify({ savedAt: Date.now(), data: data }));
+    } catch (e) {}
+  }
+  var timer;
+  function scheduleSave() {
+    clearTimeout(timer);
+    timer = setTimeout(save, 700);
+  }
+  form.addEventListener("input", scheduleSave);
+  form.addEventListener("change", scheduleSave);
+  form.addEventListener("submit", function () {
+    try { localStorage.removeItem(KEY); } catch (e) {}
+  });
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (!raw) return;
+    var pack = JSON.parse(raw);
+    if (!pack || !pack.data) return;
+    if (confirm("Yadda saxlanmış yarımçıq qrup formu var. Sahələri bərpa edək?")) {
+      var d = pack.data;
+      Object.keys(d).forEach(function (name) {
+        var el = form.elements[name];
+        if (!el) return;
+        var val = d[name];
+        if (el.length && el[0] && el[0].type === "radio") {
+          for (var j = 0; j < el.length; j++) {
+            if (el[j].type === "radio" && el[j].value === String(val)) el[j].checked = true;
+          }
+          return;
+        }
+        if (el.type === "checkbox") {
+          el.checked = !!val;
+          return;
+        }
+        el.value = val != null ? String(val) : "";
+      });
+    }
+  } catch (e) {}
+})();
+</script>
 {% endblock %}
