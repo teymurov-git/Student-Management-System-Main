@@ -53,9 +53,22 @@ def configure_student_group_academic_year_field(
         if iy not in years:
             years.append(iy)
             years.sort()
+    if not years:
+        from portal.services.income import current_academic_year_start
+
+        years = list(
+            academic_year_choice_years(current_academic_year_start().year)
+        )
+
     field = form.fields["academic_year_start"]
-    field.widget = forms.Select(attrs=field.widget.attrs)
-    field.choices = [(y, academic_year_label(y)) for y in years]
+    choice_pairs = [(y, academic_year_label(y)) for y in years]
+    field.choices = choice_pairs
+    # IntegerField yalnız field.choices saxlayır; Select isə widget.choices ilə
+    # optgroup yaradır — əks halda boş <select> çıxır.
+    attrs = dict(getattr(field.widget, "attrs", None) or {})
+    for bad_key in ("min", "max", "step", "type", "inputmode", "pattern"):
+        attrs.pop(bad_key, None)
+    field.widget = forms.Select(attrs=attrs, choices=choice_pairs)
 
 
 def build_student_group_quick_form(request, data=None, files=None):
@@ -92,6 +105,9 @@ class StudentGroupForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.order_fields(
+            ["name", "academic_year_start", "monthly_fee", "lesson_weekdays"]
+        )
         if not self.is_bound and self.instance.pk:
             self.initial["lesson_weekdays"] = [
                 str(value) for value in self.instance.lesson_weekday_numbers

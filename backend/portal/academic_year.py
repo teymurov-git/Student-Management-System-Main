@@ -40,6 +40,14 @@ def academic_year_label(start_year: int) -> str:
 
 
 def academic_year_choice_years(center: int, past: int = 4, future: int = 6) -> list[int]:
-    lo = max(YEAR_MIN, center - past)
-    hi = min(YEAR_MAX, center + future)
-    return list(range(lo, hi + 1))
+    try:
+        c = int(center)
+    except (TypeError, ValueError):
+        c = YEAR_MIN
+    c = max(YEAR_MIN, min(YEAR_MAX, c))
+    lo = max(YEAR_MIN, c - past)
+    hi = min(YEAR_MAX, c + future)
+    years = list(range(lo, hi + 1))
+    if not years:
+        years = [c]
+    return years
