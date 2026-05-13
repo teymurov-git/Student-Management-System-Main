@@ -65,7 +65,8 @@ from .forms import (
     PortalPasswordChangeForm,
     StudentForm,
     StudentGroupForm,
-    StudentGroupQuickForm,
+    build_student_group_quick_form,
+    configure_student_group_academic_year_field,
 )
 from .services.income import (
     paid_amount_for_month,
@@ -267,10 +268,22 @@ class StudentGroupCreateView(LoginRequiredMixin, CreateView):
     form_class = StudentGroupForm
     template_name = "portal/student_group_form.html"
 
-    def form_valid(self, form):
-        form.instance.academic_year_start = resolve_portal_academic_year_start(
-            self.request
+    def get_initial(self):
+        initial = super().get_initial()
+        initial.setdefault(
+            "academic_year_start",
+            resolve_portal_academic_year_start(self.request),
         )
+        return initial
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        configure_student_group_academic_year_field(
+            form, self.request, getattr(self, "object", None)
+        )
+        return form
+
+    def form_valid(self, form):
         response = super().form_valid(form)
         log_audit(
             self.request.user,
@@ -279,6 +292,7 @@ class StudentGroupCreateView(LoginRequiredMixin, CreateView):
             str(self.object.pk),
             {
                 "name": self.object.name,
+                "academic_year_start": self.object.academic_year_start,
                 "monthly_fee": str(self.object.monthly_fee),
                 "lesson_weekdays": self.object.lesson_weekdays,
             },
@@ -296,7 +310,11 @@ class StudentGroupCreateView(LoginRequiredMixin, CreateView):
         return super().form_invalid(form)
 
     def get_success_url(self):
-        return _safe_next_url(self.request) or reverse("portal:student_group_list")
+        next_url = _safe_next_url(self.request)
+        if next_url:
+            return next_url
+        y = self.object.academic_year_start
+        return f"{reverse('portal:student_group_list')}?ay={y}"
 
 
 class StudentGroupUpdateView(LoginRequiredMixin, UpdateView):
@@ -308,9 +326,23 @@ class StudentGroupUpdateView(LoginRequiredMixin, UpdateView):
         ay = resolve_portal_academic_year_start(self.request)
         return StudentGroup.objects.filter(academic_year_start=ay)
 
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        configure_student_group_academic_year_field(form, self.request, self.object)
+        return form
+
     def form_valid(self, form):
-        old_name = StudentGroup.objects.only("name").get(pk=self.object.pk).name
+        prev = StudentGroup.objects.only("name", "academic_year_start").get(
+            pk=self.object.pk
+        )
+        old_name = prev.name
+        old_ay = prev.academic_year_start
         response = super().form_valid(form)
+        if old_ay != self.object.academic_year_start:
+            Student.objects.filter(student_group=self.object).update(
+                academic_year_start=self.object.academic_year_start,
+                updated_at=timezone.now(),
+            )
         synced_count = 0
         if old_name != self.object.name:
             synced_count = Student.objects.filter(
@@ -327,6 +359,7 @@ class StudentGroupUpdateView(LoginRequiredMixin, UpdateView):
             str(self.object.pk),
             {
                 "name": self.object.name,
+                "academic_year_start": self.object.academic_year_start,
                 "monthly_fee": str(self.object.monthly_fee),
                 "lesson_weekdays": self.object.lesson_weekdays,
                 "synced_students": synced_count,
@@ -336,7 +369,8 @@ class StudentGroupUpdateView(LoginRequiredMixin, UpdateView):
         return response
 
     def get_success_url(self):
-        return reverse("portal:student_group_list")
+        y = self.object.academic_year_start
+        return f"{reverse('portal:student_group_list')}?ay={y}"
 
 
 class StudentGroupDeleteView(LoginRequiredMixin, View):
@@ -410,7 +444,7 @@ class StudentListView(LoginRequiredMixin, ListView):
                     is_archived=False,
                     academic_year_start=ay,
                 ).count()
-        ctx["group_form"] = StudentGroupQuickForm()
+        ctx["group_form"] = build_student_group_quick_form(self.request)
         return ctx
 
     def get_queryset(self):
@@ -420,7 +454,7 @@ class StudentListView(LoginRequiredMixin, ListView):
 class StudentFormGroupContextMixin:
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["group_form"] = StudentGroupQuickForm()
+        ctx["group_form"] = build_student_group_quick_form(self.request)
         return ctx
 
 

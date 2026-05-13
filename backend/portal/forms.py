@@ -5,6 +5,11 @@ from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 
 from attendance.models import AttendanceRecord
 from payments.models import MonthlyPayment
+from portal.academic_year import (
+    academic_year_choice_years,
+    academic_year_label,
+    resolve_portal_academic_year_start,
+)
 from students.models import Student, StudentGroup
 
 
@@ -35,6 +40,35 @@ class PortalPasswordChangeForm(PasswordChangeForm):
         _wire_widgets(self)
 
 
+def configure_student_group_academic_year_field(
+    form: forms.ModelForm,
+    request,
+    instance: StudentGroup | None = None,
+) -> None:
+    """Sidebar ilə eyni il pəncərəsi; redaktədə cari qrupun ili siyahıda olmasa əlavə olunur."""
+    center = resolve_portal_academic_year_start(request)
+    years = list(academic_year_choice_years(center))
+    if instance is not None and instance.pk:
+        iy = instance.academic_year_start
+        if iy not in years:
+            years.append(iy)
+            years.sort()
+    field = form.fields["academic_year_start"]
+    field.widget = forms.Select(attrs=field.widget.attrs)
+    field.choices = [(y, academic_year_label(y)) for y in years]
+
+
+def build_student_group_quick_form(request, data=None, files=None):
+    kw = {}
+    if data is not None:
+        kw["data"] = data
+    if files is not None:
+        kw["files"] = files
+    form = StudentGroupQuickForm(**kw)
+    configure_student_group_academic_year_field(form, request, form.instance)
+    return form
+
+
 class StudentGroupForm(forms.ModelForm):
     lesson_weekdays = forms.MultipleChoiceField(
         choices=StudentGroup.LESSON_WEEKDAY_CHOICES,
@@ -46,10 +80,14 @@ class StudentGroupForm(forms.ModelForm):
 
     class Meta:
         model = StudentGroup
-        fields = ["name", "monthly_fee", "lesson_weekdays"]
+        fields = ["academic_year_start", "name", "monthly_fee", "lesson_weekdays"]
         labels = {
+            "academic_year_start": "Tədris ili",
             "name": "Qrup adı",
             "monthly_fee": "Aylıq məbləğ (₼)",
+        }
+        help_texts = {
+            "academic_year_start": "Başlanğıc təqvim ili (məs. 2026 → 2026–2027).",
         }
 
     def __init__(self, *args, **kwargs):
